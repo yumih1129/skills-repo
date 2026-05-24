@@ -41,6 +41,20 @@ interface SkillManifest {
   generatedAt: string
 }
 
+function formatShanghaiTimestamp(date = new Date()): string {
+  const shanghaiDate = new Date(date.getTime() + 8 * 60 * 60 * 1000)
+
+  const year = shanghaiDate.getUTCFullYear()
+  const month = String(shanghaiDate.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(shanghaiDate.getUTCDate()).padStart(2, '0')
+  const hours = String(shanghaiDate.getUTCHours()).padStart(2, '0')
+  const minutes = String(shanghaiDate.getUTCMinutes()).padStart(2, '0')
+  const seconds = String(shanghaiDate.getUTCSeconds()).padStart(2, '0')
+  const milliseconds = String(shanghaiDate.getUTCMilliseconds()).padStart(3, '0')
+
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}+08:00`
+}
+
 function deriveCategory(slug: string): string {
   const keywordMap: Record<string, string> = {
     'skill-create': '开发工具',
@@ -117,7 +131,7 @@ function main() {
   const manifest: SkillManifest = {
     skills,
     categories: ['全部', ...Array.from(categories)],
-    generatedAt: new Date().toISOString(),
+    generatedAt: formatShanghaiTimestamp(),
   }
 
   // Write JSON for runtime fetch (public directory)

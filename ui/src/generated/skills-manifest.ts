@@ -200,7 +200,7 @@ const _manifestData = {
     "开发工具",
     "质量保障"
   ],
-  "generatedAt": "2026-05-24T09:46:06.988Z"
+  "generatedAt": "2026-05-24T18:31:17.357+08:00"
 } as any
 
 export const manifestData: SkillsManifest = _manifestData
