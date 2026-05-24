@@ -133,7 +133,7 @@ export function HomeClient({ skills, categories }: HomeClientProps) {
               <span className="text-sm text-muted-foreground">
                 {filteredSkills.length} 个技能
               </span>
-              <div className="flex items-center gap-1 bg-muted rounded-lg p-[3px]">
+              <div className="flex items-center gap-1 bg-muted rounded-lg p-0.75">
                 <button
                   onClick={() => setSortOrder('publishedAt')}
                   className={cn(

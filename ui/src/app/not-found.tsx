@@ -24,15 +24,15 @@ export default function NotFound() {
         <div
           className={cn(
             'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
-            'w-[900px] h-[900px] rounded-full',
-            'bg-gradient-to-b from-foreground/[0.015] to-transparent',
-            'dark:from-foreground/[0.03] dark:to-transparent'
+            'w-225 h-225 rounded-full',
+            'bg-linear-to-b from-foreground/1.5 to-transparent',
+            'dark:from-foreground/3 dark:to-transparent'
           )}
         />
         <div
           className={cn(
             'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
-            'w-[560px] h-[560px] rounded-full',
+            'w-140 h-140 rounded-full',
             'border border-border/15 dark:border-border/25',
             'animate-fade-in [animation-delay:500ms] [animation-fill-mode:backwards]'
           )}
@@ -42,7 +42,7 @@ export default function NotFound() {
       {/* Premium card panel */}
       <div
         className={cn(
-          'relative z-10 w-full max-w-[340px] mx-auto px-4',
+          'relative z-10 w-full max-w-85 mx-auto px-4',
           'animate-fade-in [animation-delay:80ms] [animation-fill-mode:backwards]'
         )}
       >
@@ -62,7 +62,7 @@ export default function NotFound() {
             {/* Subtle top edge highlight */}
             <div
               aria-hidden="true"
-              className="absolute top-0 left-3 right-3 h-px bg-gradient-to-r from-transparent via-foreground/5 to-transparent dark:via-foreground/10"
+              className="absolute top-0 left-3 right-3 h-px bg-linear-to-r from-transparent via-foreground/5 to-transparent dark:via-foreground/10"
             />
 
             {/* Top status badge */}
@@ -98,7 +98,7 @@ export default function NotFound() {
                 aria-hidden="true"
                 className={cn(
                   'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
-                  'w-[180px] h-[72px] rounded-xl',
+                  'w-45 h-18 rounded-xl',
                   'bg-muted/50 dark:bg-muted/30',
                   'ring-1 ring-border/50 dark:ring-border/40'
                 )}
@@ -129,7 +129,7 @@ export default function NotFound() {
             <p
               className={cn(
                 'text-[13px] text-muted-foreground leading-relaxed',
-                'max-w-[240px] mx-auto',
+                'max-w-60 mx-auto',
                 'animate-fade-in [animation-delay:360ms] [animation-fill-mode:backwards]'
               )}
             >
@@ -139,7 +139,7 @@ export default function NotFound() {
             {/* Footer divider */}
             <div
               className={cn(
-                'mt-6 mb-5 h-px bg-gradient-to-r from-transparent via-border/60 to-transparent',
+                'mt-6 mb-5 h-px bg-linear-to-r from-transparent via-border/60 to-transparent',
                 'animate-fade-in [animation-delay:420ms] [animation-fill-mode:backwards]'
               )}
             />

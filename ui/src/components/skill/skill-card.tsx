@@ -21,7 +21,7 @@ export function SkillCard({ skill, onClick, isSelected }: SkillCardProps) {
     <button
       onClick={onClick}
       className={cn(
-        'group w-full rounded-xl text-left transition-[box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'group w-full rounded-xl text-left transition-shadow duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isSelected && 'ring-3 ring-primary/20'
       )}
     >

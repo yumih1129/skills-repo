@@ -31,7 +31,7 @@ export function ThemeSwitch() {
   }, [theme])
 
   return (
-    <div className="theme-switch flex items-center gap-1 bg-muted rounded-lg p-[3px]">
+    <div className="theme-switch flex items-center gap-1 bg-muted rounded-lg p-0.75">
       {themes.map(({ value, label, icon: Icon }) => (
         <button
           key={value}
