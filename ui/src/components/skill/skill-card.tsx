@@ -4,6 +4,7 @@ import { ArrowRight, Tag, Calendar } from 'lucide-react'
 import type { Skill } from '@/data/skills'
 import { statusConfig } from '@/data/skills'
 import { cn } from '@/lib/utils'
+import { formatPublishedDate } from '@/lib/date'
 import { SkillIcon } from './skill-icon'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -73,7 +74,7 @@ export function SkillCard({ skill, onClick, isSelected }: SkillCardProps) {
           </div>
           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
             <Calendar className="h-3 w-3" />
-            {skill.publishedAt ? new Date(skill.publishedAt).toLocaleDateString('zh-CN') : ''}
+            {formatPublishedDate(skill.publishedAt)}
           </span>
         </div>
 

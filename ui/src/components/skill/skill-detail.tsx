@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
+import { formatPublishedDate } from '@/lib/date'
 
 const MarkdownRenderer = dynamic(
   () => import('@/components/markdown/markdown-renderer').then((mod) => mod.MarkdownRenderer),
@@ -166,7 +167,7 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
           </div>
           <span className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
             <Calendar className="h-3 w-3" />
-            {skill.publishedAt ? new Date(skill.publishedAt).toLocaleDateString('zh-CN') : 'N/A'}
+            {formatPublishedDate(skill.publishedAt) || 'N/A'}
           </span>
         </div>
 
