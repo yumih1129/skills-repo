@@ -1,10 +1,57 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { cn } from '@/lib/utils'
 
 interface MarkdownRendererProps {
   content: string
+}
+
+function MarkdownTableShell({ children }: { children: React.ReactNode }) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [isHorizontallyScrollable, setIsHorizontallyScrollable] = useState(false)
+
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) {
+      return
+    }
+
+    const updateScrollableState = () => {
+      setIsHorizontallyScrollable(element.scrollWidth > element.clientWidth + 1)
+    }
+
+    updateScrollableState()
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateScrollableState()
+    })
+
+    resizeObserver.observe(element)
+
+    const table = element.querySelector('table')
+    if (table) {
+      resizeObserver.observe(table)
+    }
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [children])
+
+  return (
+    <div
+      ref={containerRef}
+      className={cn(
+        'markdown-table-shell my-3 max-w-full overflow-x-auto overflow-y-hidden rounded-lg border border-border/60 scrollbar-thin',
+        isHorizontallyScrollable && 'markdown-table-shell-scrollable'
+      )}
+    >
+      <table className="markdown-table w-max min-w-full border-collapse text-sm">{children}</table>
+    </div>
+  )
 }
 
 export function MarkdownRenderer({ content }: MarkdownRendererProps) {
@@ -32,9 +79,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
           a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{children}</a>,
           hr: () => <hr className="border-border my-4" />,
           table: ({ children }) => (
-            <div className="markdown-table-shell my-3 max-w-full overflow-x-auto overflow-y-hidden rounded-lg border border-border/60 scrollbar-thin">
-              <table className="markdown-table w-max min-w-full border-collapse text-sm">{children}</table>
-            </div>
+            <MarkdownTableShell>{children}</MarkdownTableShell>
           ),
           th: ({ children }) => (
             <th className="whitespace-nowrap border border-border bg-secondary px-3 py-2 text-left font-medium">

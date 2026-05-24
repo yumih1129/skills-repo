@@ -146,6 +146,10 @@ html[data-theme-preference='system'] .theme-switch button[data-theme-option='sys
   border-right: 0;
 }
 
+.markdown-table-shell:not(.markdown-table-shell-scrollable) .markdown-table > :is(tbody, tfoot) > tr:last-child > * {
+  border-bottom: 0;
+}
+
 /* Typography utilities */
 .text-page-title {
   font-size: 1rem; font-weight: 600; line-height: 1.25;
