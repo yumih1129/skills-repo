@@ -45,7 +45,11 @@ export default function RootLayout({
   `
 
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
+    <html
+      lang="zh-CN"
+      suppressHydrationWarning
+      data-theme-preference={siteConfig.ui.defaultTheme}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

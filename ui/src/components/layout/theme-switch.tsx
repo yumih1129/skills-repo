@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -17,7 +18,17 @@ function syncThemePreference(theme: (typeof themes)[number]['value']) {
 }
 
 export function ThemeSwitch() {
-  const { setTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!theme) return
+    syncThemePreference(theme as (typeof themes)[number]['value'])
+  }, [theme])
 
   return (
     <div className="theme-switch flex items-center gap-1 bg-muted rounded-lg p-[3px]">
@@ -27,13 +38,16 @@ export function ThemeSwitch() {
           type="button"
           data-theme-option={value}
           aria-label={`切换到${label}主题`}
+          aria-pressed={mounted ? theme === value : undefined}
           onClick={() => {
             syncThemePreference(value)
             setTheme(value)
           }}
           className={cn(
             'flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors',
-            'text-muted-foreground hover:text-foreground'
+            mounted && theme === value
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           )}
         >
           <Icon className="h-3 w-3" />
