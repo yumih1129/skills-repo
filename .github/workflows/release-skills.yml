@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - 'skills/**'
-      - '.github/workflows/release-skills.yml'
   workflow_dispatch:
 
 permissions:
@@ -39,33 +38,11 @@ jobs:
           set -euo pipefail
           subject="$(git log -1 --format=%s -- skills)"
           body="$(git log -1 --format=%b -- skills)"
-          commit_short="$(git log -1 --format=%h -- skills)"
-          commit_full="$(git log -1 --format=%H -- skills)"
-          author_name="$(git log -1 --format=%an -- skills)"
-          commit_date="$(git log -1 --date=iso --format=%ad -- skills)"
-          skill_count="$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
-          commit_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${commit_full}"
-
-          # Public release notes should use the repository author's preferred display name.
-          author_name="Yumih"
 
           {
-            echo "Rolling pre-release archive for the latest snapshot of the \`skills/\` directory."
-            echo
-            echo "## Package Snapshot"
-            echo
-            echo "| Item | Value |"
-            echo "| --- | --- |"
-            echo "| Archive | \`${archive_name}\` |"
-            echo "| Included directory | \`skills/\` |"
-            echo "| Skill count | ${skill_count} |"
-            echo "| Commit | [\`${commit_short}\`](${commit_url}) |"
-            echo "| Author | ${author_name} |"
-            echo "| Updated at | ${commit_date} |"
-            echo "| Summary | ${subject} |"
+            echo "${subject}"
             if [ -n "${body}" ]; then
               echo
-              echo "## Change Notes"
               echo "${body}"
             fi
           } > dist/release-notes.md
@@ -77,12 +54,12 @@ jobs:
           set -euo pipefail
           if ! gh release view skills-latest >/dev/null 2>&1; then
             gh release create skills-latest \
-              --title "SKILLS Latest Package" \
+              --title "SKILLS Package" \
               --notes-file dist/release-notes.md \
               --prerelease
           else
             gh release edit skills-latest \
-              --title "SKILLS Latest Package" \
+              --title "SKILLS Package" \
               --notes-file dist/release-notes.md \
               --prerelease
           fi
