@@ -1,0 +1,82 @@
+name: Package Skills
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'skills/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: package-skills
+  cancel-in-progress: true
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build skills archive
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          archive_name="skills-repo-skills-${GITHUB_SHA::7}.zip"
+          (
+            cd .
+            zip -r "dist/${archive_name}" skills
+          )
+          echo "archive_name=${archive_name}" >> "$GITHUB_ENV"
+
+      - name: Build release notes from latest skills commit
+        run: |
+          set -euo pipefail
+          subject="$(git log -1 --format=%s -- skills)"
+          body="$(git log -1 --format=%b -- skills)"
+          commit_short="$(git log -1 --format=%h -- skills)"
+          author_name="$(git log -1 --format=%an -- skills)"
+          commit_date="$(git log -1 --date=iso --format=%ad -- skills)"
+
+          {
+            echo "Auto-updated ZIP package for the latest contents of the skills directory."
+            echo
+            echo "## Latest skills change"
+            echo "- Commit: ${commit_short}"
+            echo "- Author: ${author_name}"
+            echo "- Date: ${commit_date}"
+            echo "- Summary: ${subject}"
+            if [ -n "${body}" ]; then
+              echo
+              echo "### Commit details"
+              echo "${body}"
+            fi
+          } > dist/release-notes.md
+
+      - name: Create or update rolling release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if ! gh release view skills-latest >/dev/null 2>&1; then
+            gh release create skills-latest \
+              --title "Skills Latest" \
+              --notes-file dist/release-notes.md \
+              --prerelease
+          else
+            gh release edit skills-latest \
+              --title "Skills Latest" \
+              --notes-file dist/release-notes.md \
+              --prerelease
+          fi
+
+      - name: Upload archive to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload skills-latest "dist/${archive_name}" --clobber
