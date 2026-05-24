@@ -1,5 +1,4 @@
 // This file is auto-generated. Do not edit manually.
-// Generated at: 2026-05-24T03:41:26.192Z
 
 export type SkillStatus = 'active' | 'draft' | 'deprecated' | 'recommended'
 
@@ -201,7 +200,7 @@ const _manifestData = {
     "开发工具",
     "质量保障"
   ],
-  "generatedAt": "2026-05-24T03:41:26.192Z"
+  "generatedAt": "2026-05-24T09:46:06.988Z"
 } as any
 
 export const manifestData: SkillsManifest = _manifestData

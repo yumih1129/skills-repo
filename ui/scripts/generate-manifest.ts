@@ -131,7 +131,6 @@ function main() {
 
   const tsOutputFile = path.join(tsOutputDir, 'skills-manifest.ts')
   const tsContent = `// This file is auto-generated. Do not edit manually.
-// Generated at: ${manifest.generatedAt}
 
 export type SkillStatus = 'active' | 'draft' | 'deprecated' | 'recommended'
 
