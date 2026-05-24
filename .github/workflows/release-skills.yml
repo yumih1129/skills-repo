@@ -39,7 +39,9 @@ jobs:
           set -euo pipefail
           release_stamp="$(date -u +'%Y%m%d-%H%M%S')"
           release_tag="skills-package-${release_stamp}-${GITHUB_SHA::7}"
+          release_title="SKILLS Package · ${release_stamp}"
           echo "release_tag=${release_tag}" >> "$GITHUB_ENV"
+          echo "release_title=${release_title}" >> "$GITHUB_ENV"
 
       - name: Build release notes from latest skills commit
         run: |
@@ -81,7 +83,7 @@ jobs:
         run: |
           set -euo pipefail
           gh release create "${release_tag}" \
-            --title "SKILLS Package" \
+            --title "${release_title}" \
             --notes-file dist/release-notes.md \
             --prerelease
 
