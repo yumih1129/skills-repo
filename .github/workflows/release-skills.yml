@@ -37,7 +37,7 @@ jobs:
       - name: Build release metadata
         run: |
           set -euo pipefail
-          release_stamp="$(date -u +'%Y%m%d-%H%M%S')"
+          release_stamp="$(TZ='Asia/Shanghai' date +'%y%m%d%H%M')"
           release_tag="skills-package-${release_stamp}-${GITHUB_SHA::7}"
           release_title="SKILLS Package · ${release_stamp}"
           echo "release_tag=${release_tag}" >> "$GITHUB_ENV"
@@ -50,23 +50,27 @@ jobs:
           body="$(git log -1 --format=%b -- skills)"
           commit_short="$(git log -1 --format=%h -- skills)"
           commit_full="$(git log -1 --format=%H -- skills)"
-          commit_date="$(git log -1 --date=iso --format=%ad -- skills)"
+          commit_date="$(TZ='Asia/Shanghai' git log -1 --date=format:'%Y-%m-%d %H:%M +0800' --format=%ad -- skills)"
           skill_count="$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
           commit_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${commit_full}"
 
           {
-            echo "Rolling pre-release archive for the latest snapshot of the \`skills/\` directory."
+            echo "Archive for the latest snapshot of the \`skills/\` directory."
             echo
             echo "## Package Snapshot"
             echo
-            echo "- **Archive**: \`${archive_name}\`"
-            echo "- **Included directory**: \`skills/\`"
-            echo "- **Skill count**: ${skill_count}"
-            echo "- **Commit**: [\`${commit_short}\`](${commit_url})"
-            echo "- **Author**: Yumih"
-            echo "- **Updated at**: ${commit_date}"
+            echo "<table>"
+            echo "  <tbody>"
+            echo "    <tr><td><strong>Archive</strong></td><td><code>${archive_name}</code></td></tr>"
+            echo "    <tr><td><strong>Directory</strong></td><td><code>skills/</code></td></tr>"
+            echo "    <tr><td><strong>Skill Count</strong></td><td>${skill_count}</td></tr>"
+            echo "    <tr><td><strong>Commit</strong></td><td><a href=\"${commit_url}\"><code>${commit_short}</code></a></td></tr>"
+            echo "    <tr><td><strong>Author</strong></td><td>Yumih</td></tr>"
+            echo "    <tr><td><strong>Updated At</strong></td><td>${commit_date}</td></tr>"
+            echo "  </tbody>"
+            echo "</table>"
             echo
-            echo "## Latest Skills Note"
+            echo "## Skills Note"
             echo
             echo "> ${subject}"
             if [ -n "${body}" ]; then
@@ -84,8 +88,7 @@ jobs:
           set -euo pipefail
           gh release create "${release_tag}" \
             --title "${release_title}" \
-            --notes-file dist/release-notes.md \
-            --prerelease
+            --notes-file dist/release-notes.md
 
       - name: Upload archive to release
         env:
