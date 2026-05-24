@@ -1,0 +1,21 @@
+{
+    "name": "Skill Create",
+    "ownerId": "Yumih",
+    "slug": "skill-create",
+    "icon": "PencilRuler",
+    "iconType": "library",
+    "iconLibrary": "lucide",
+    "description": "用于创建、重构、修正和归档任意 SKILL，并通过结构排查、质量评估与验证形成可交付闭环的技能。",
+    "homepage": "https://github.com/yumih1129/skills-repo/tree/main/skills/skill-create",
+    "tags": [
+        "创建",
+        "重构",
+        "SKILL"
+    ],
+    "category": "开发工具",
+    "version": "1.0.0",
+    "publishedAt": 1779198159000,
+    "license": "MIT",
+    "language": "zh-CN",
+    "status": "active"
+}

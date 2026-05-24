@@ -1,0 +1,21 @@
+{
+  "name": "Skill Stabilize",
+  "ownerId": "Yumih",
+  "slug": "skill-stabilize",
+  "icon": "ShieldCheck",
+  "iconType": "library",
+  "iconLibrary": "lucide",
+  "description": "对已有 SKILL 做不改变能力边界的收口稳定化优化，减少歧义与漂移，提升重复评测一致性，并将评估结论直接落地为修订结果。",
+  "homepage": "https://github.com/yumih1129/skills-repo/tree/main/skills/skill-stabilize",
+  "tags": [
+    "SKILL",
+    "优化",
+    "收口"
+  ],
+  "category": "开发工具",
+  "version": "1.0.0",
+  "publishedAt": 1779536071000,
+  "license": "MIT",
+  "language": "zh-CN",
+  "status": "active"
+}

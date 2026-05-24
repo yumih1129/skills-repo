@@ -1,0 +1,21 @@
+{
+  "name": "Requirements Brief",
+  "ownerId": "Yumih",
+  "slug": "requirements-brief",
+  "icon": "ClipboardList",
+  "iconType": "library",
+  "iconLibrary": "lucide",
+  "description": "将用户口语化、零散或模糊的需求整理为结构化、可交付的需求简报。",
+  "homepage": "https://github.com/yumih1129/skills-repo/tree/main/skills/requirements-brief",
+  "tags": [
+    "需求",
+    "分析",
+    "简报"
+  ],
+  "category": "开发工具",
+  "version": "1.0.0",
+  "publishedAt": 1779458936701,
+  "license": "MIT",
+  "language": "zh-CN",
+  "status": "active"
+}
