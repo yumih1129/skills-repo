@@ -1,0 +1,10 @@
+/.agents/
+
+/tmp/
+
+.DS_Store
+*.log
+
+/ui/tsconfig.tsbuildinfo
+
+/back/
