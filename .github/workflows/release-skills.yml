@@ -34,6 +34,13 @@ jobs:
           )
           echo "archive_name=${archive_name}" >> "$GITHUB_ENV"
 
+      - name: Build release metadata
+        run: |
+          set -euo pipefail
+          release_stamp="$(date -u +'%Y%m%d-%H%M%S')"
+          release_tag="skills-package-${release_stamp}-${GITHUB_SHA::7}"
+          echo "release_tag=${release_tag}" >> "$GITHUB_ENV"
+
       - name: Build release notes from latest skills commit
         run: |
           set -euo pipefail
@@ -68,26 +75,19 @@ jobs:
             fi
           } > dist/release-notes.md
 
-      - name: Create or update rolling release
+      - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          if ! gh release view skills-latest >/dev/null 2>&1; then
-            gh release create skills-latest \
-              --title "SKILLS Package" \
-              --notes-file dist/release-notes.md \
-              --prerelease
-          else
-            gh release edit skills-latest \
-              --title "SKILLS Package" \
-              --notes-file dist/release-notes.md \
-              --prerelease
-          fi
+          gh release create "${release_tag}" \
+            --title "SKILLS Package" \
+            --notes-file dist/release-notes.md \
+            --prerelease
 
       - name: Upload archive to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release upload skills-latest "dist/${archive_name}" --clobber
+          gh release upload "${release_tag}" "dist/${archive_name}" --clobber
