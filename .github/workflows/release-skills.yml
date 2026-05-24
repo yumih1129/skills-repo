@@ -50,7 +50,7 @@ jobs:
           body="$(git log -1 --format=%b -- skills)"
           commit_short="$(git log -1 --format=%h -- skills)"
           commit_full="$(git log -1 --format=%H -- skills)"
-          commit_date="$(TZ='Asia/Shanghai' git log -1 --date=format:'%Y-%m-%d %H:%M +0800' --format=%ad -- skills)"
+          commit_date="$(TZ='Asia/Shanghai' git log -1 --date=format:'%Y-%m-%d %H:%M +08' --format=%ad -- skills)"
           skill_count="$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
           commit_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${commit_full}"
 
@@ -88,7 +88,8 @@ jobs:
           set -euo pipefail
           gh release create "${release_tag}" \
             --title "${release_title}" \
-            --notes-file dist/release-notes.md
+            --notes-file dist/release-notes.md \
+            --prerelease
 
       - name: Upload archive to release
         env:
