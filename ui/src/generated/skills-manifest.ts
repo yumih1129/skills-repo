@@ -46,7 +46,7 @@ const _manifestData = {
       "icon": "Newspaper",
       "iconType": "library",
       "iconLibrary": "lucide",
-      "description": "根据指定时间范围或按最新顺序检索特定主题新闻，并整理为结构化新闻简报，支持多语言新闻检索与摘要。",
+      "description": "根据指定时间输入（时间点、时间段或相对时间）或按最新顺序检索特定主题新闻，并整理为结构化新闻简报，支持多语言新闻检索与摘要。",
       "homepage": "https://github.com/yumih1129/skills-repo/tree/main/skills/news-briefing-search",
       "tags": [
         "新闻",
@@ -54,9 +54,9 @@ const _manifestData = {
         "多语言"
       ],
       "category": "信息检索",
-      "version": "1.4.0",
+      "version": "1.7.0",
       "publishedAt": 1747526400000,
-      "updatedAt": 1779728619000,
+      "updatedAt": 1779742306000,
       "license": "MIT",
       "language": "zh-CN",
       "status": "active",
@@ -134,9 +134,9 @@ const _manifestData = {
         "评分"
       ],
       "category": "质量保障",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "publishedAt": 1779204258000,
-      "updatedAt": 1779204258000,
+      "updatedAt": 1779740560000,
       "license": "MIT",
       "language": "zh-CN",
       "status": "active",
@@ -163,7 +163,7 @@ const _manifestData = {
       "category": "开发工具",
       "version": "1.1.0",
       "publishedAt": 1779379200000,
-      "updatedAt": 1779379200000,
+      "updatedAt": 1779736111866,
       "license": "MIT",
       "language": "zh-CN",
       "status": "active",
@@ -207,7 +207,7 @@ const _manifestData = {
     "开发工具",
     "质量保障"
   ],
-  "generatedAt": "2026-05-26T01:39:21.256+08:00"
+  "generatedAt": "2026-05-26T05:01:52.016+08:00"
 } as any
 
 export const manifestData: SkillsManifest = _manifestData
