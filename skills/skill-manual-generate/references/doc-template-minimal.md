@@ -59,6 +59,11 @@
 - {注意事项1}
 - {注意事项2}
 - {注意事项3}
+
+## 相关文件
+
+- 技能定义：`{project_relative_skill_dir}/SKILL.md`
+- 元数据：`{project_relative_skill_dir}/_meta.json`
 ````
 
 使用规则：
