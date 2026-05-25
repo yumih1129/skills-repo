@@ -53,7 +53,7 @@ const _manifestData = {
         "多语言"
       ],
       "category": "信息检索",
-      "version": "1.3.0",
+      "version": "1.4.0",
       "publishedAt": 1747526400000,
       "license": "MIT",
       "language": "zh-CN",
@@ -200,7 +200,7 @@ const _manifestData = {
     "开发工具",
     "质量保障"
   ],
-  "generatedAt": "2026-05-24T18:31:17.357+08:00"
+  "generatedAt": "2026-05-26T00:44:38.901+08:00"
 } as any
 
 export const manifestData: SkillsManifest = _manifestData

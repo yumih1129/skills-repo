@@ -129,21 +129,21 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-foreground hover:text-primary hover:underline underline-offset-2 transition-colors"
                   >
-                    <span className="text-card-title-lg">{skill.name}</span>
+                    <span className="text-base font-semibold leading-tight">{skill.name}</span>
                     <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
                   </a>
                 ) : (
-                  <span className="text-card-title-lg">{skill.name}</span>
+                  <span className="text-base font-semibold leading-tight">{skill.name}</span>
                 )}
               </div>
-              <span className="inline-flex items-center gap-1.5 px-0 py-0.5 rounded text-[14px]! font-medium leading-none text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 px-0 py-0.5 rounded text-xs font-medium leading-none text-muted-foreground">
                 <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: status.dotBg, flexShrink: 0 }} />
                 {status.label}
               </span>
             </div>
 
             {/* Row 2: Category + Version */}
-            <div className="flex items-center justify-between text-meta-sm">
+            <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">{skill.category || '未分类'}</span>
               <span className="text-muted-foreground">v{skill.version}</span>
             </div>

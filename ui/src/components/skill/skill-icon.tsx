@@ -31,7 +31,7 @@ const ICON_SIZES = {
 } as const
 
 // Container styles shared by all icon types
-const containerBaseStyles = 'flex items-center justify-center rounded-xl border bg-secondary/40 flex-shrink-0'
+const containerBaseStyles = 'flex items-center justify-center rounded-xl border border-border/62 bg-secondary/24 flex-shrink-0'
 
 function processSvg(svgContent: string, targetSize: number, colorClass: string): string {
   // Remove all existing width/height attributes
@@ -60,7 +60,7 @@ export function SkillIcon({ icon, iconType = 'emoji', iconLibrary, size = 'md', 
   if (!icon) {
     return (
       <div className={cn(containerBaseStyles, containerSize, className)}>
-        <HelpCircle width={iconPixelSize} height={iconPixelSize} className="text-muted-foreground" />
+        <HelpCircle width={iconPixelSize} height={iconPixelSize} className="text-foreground/50" />
       </div>
     )
   }
@@ -76,6 +76,8 @@ export function SkillIcon({ icon, iconType = 'emoji', iconLibrary, size = 'md', 
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            opacity: 0.78,
+            filter: 'saturate(0.78)',
           }}
           className="select-none"
         >
@@ -96,7 +98,7 @@ export function SkillIcon({ icon, iconType = 'emoji', iconLibrary, size = 'md', 
           <IconComponent
             width={iconPixelSize}
             height={iconPixelSize}
-            className="text-foreground/80"
+            className="text-foreground/54"
           />
         </div>
       )
@@ -105,14 +107,14 @@ export function SkillIcon({ icon, iconType = 'emoji', iconLibrary, size = 'md', 
     // Fallback for missing library icon
     return (
       <div className={cn(containerBaseStyles, containerSize, className)}>
-        <HelpCircle width={iconPixelSize} height={iconPixelSize} className="text-muted-foreground" />
+        <HelpCircle width={iconPixelSize} height={iconPixelSize} className="text-foreground/50" />
       </div>
     )
   }
 
   // SVG icon - must be complete SVG string
   if (iconType === 'svg' || icon.startsWith('<')) {
-    const processedSvg = processSvg(icon, iconPixelSize, 'text-foreground/80')
+    const processedSvg = processSvg(icon, iconPixelSize, 'text-foreground/54')
 
     return (
       <div
@@ -125,7 +127,7 @@ export function SkillIcon({ icon, iconType = 'emoji', iconLibrary, size = 'md', 
   // Default fallback
   return (
     <div className={cn(containerBaseStyles, containerSize, className)}>
-      <HelpCircle width={iconPixelSize} height={iconPixelSize} className="text-muted-foreground" />
+      <HelpCircle width={iconPixelSize} height={iconPixelSize} className="text-foreground/50" />
     </div>
   )
 }
