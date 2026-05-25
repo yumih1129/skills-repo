@@ -1,10 +1,10 @@
 'use client'
 
-import { ArrowRight, Tag, Calendar } from 'lucide-react'
+import { ArrowRight, Tag, Calendar, Clock3 } from 'lucide-react'
 import type { Skill } from '@/data/skills'
 import { statusConfig } from '@/data/skills'
 import { cn } from '@/lib/utils'
-import { formatPublishedDate } from '@/lib/date'
+import { formatSkillDate, type SkillDateField } from '@/lib/date'
 import { SkillIcon } from './skill-icon'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,10 +13,13 @@ interface SkillCardProps {
   skill: Skill
   onClick: () => void
   isSelected?: boolean
+  dateField?: SkillDateField
 }
 
-export function SkillCard({ skill, onClick, isSelected }: SkillCardProps) {
+export function SkillCard({ skill, onClick, isSelected, dateField = 'publishedAt' }: SkillCardProps) {
   const status = statusConfig[skill.status || 'active']
+  const isUpdatedMode = dateField === 'updatedAt'
+  const dateValue = isUpdatedMode ? (skill.updatedAt ?? skill.publishedAt) : skill.publishedAt
 
   return (
     <button
@@ -68,7 +71,7 @@ export function SkillCard({ skill, onClick, isSelected }: SkillCardProps) {
           </p>
         </div>
 
-        {/* Zone 3: Tags + Published Date */}
+        {/* Zone 3: Tags + Date */}
         <div className="flex items-center justify-between gap-2 px-3">
           <div className="flex flex-wrap gap-1.5">
             {skill.tags.slice(0, 3).map((tag) => (
@@ -85,8 +88,8 @@ export function SkillCard({ skill, onClick, isSelected }: SkillCardProps) {
             )}
           </div>
           <span className="inline-flex min-w-[92px] items-center justify-end gap-1 text-xs text-muted-foreground whitespace-nowrap">
-            <Calendar className="h-3 w-3" />
-            {formatPublishedDate(skill.publishedAt)}
+            {isUpdatedMode ? <Clock3 className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
+            {formatSkillDate(dateValue)}
           </span>
         </div>
 

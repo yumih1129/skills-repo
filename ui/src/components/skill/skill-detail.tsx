@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { ExternalLink, Calendar, Tag, FileText, ClipboardList, Loader2 } from 'lucide-react'
+import { ExternalLink, Calendar, Clock3, Tag, FileText, ClipboardList, Loader2 } from 'lucide-react'
 import type { Skill } from '@/data/skills'
 import { statusConfig } from '@/data/skills'
 import { cn } from '@/lib/utils'
@@ -11,7 +11,7 @@ import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
-import { formatPublishedDate } from '@/lib/date'
+import { formatSkillDate, type SkillDateField } from '@/lib/date'
 
 const MarkdownRenderer = dynamic(
   () => import('@/components/markdown/markdown-renderer').then((mod) => mod.MarkdownRenderer),
@@ -29,9 +29,10 @@ interface ResourceContent {
 interface SkillDetailProps {
   skill: Skill | null
   onClose: () => void
+  dateField?: SkillDateField
 }
 
-export function SkillDetail({ skill, onClose }: SkillDetailProps) {
+export function SkillDetail({ skill, onClose, dateField = 'publishedAt' }: SkillDetailProps) {
   const [selectedResource, setSelectedResource] = useState<ResourceType>(null)
   const [resourceContent, setResourceContent] = useState<ResourceContent>({
     loading: false,
@@ -85,6 +86,8 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
   }
 
   const status = statusConfig[skill.status || 'active']
+  const isUpdatedMode = dateField === 'updatedAt'
+  const dateValue = isUpdatedMode ? (skill.updatedAt ?? skill.publishedAt) : skill.publishedAt
 
   // Determine available resources
   const hasDocs = skill.hasDocs
@@ -155,7 +158,7 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
           <p className="text-body">{skill.description}</p>
         </div>
 
-        {/* Tags + Published Date */}
+        {/* Tags + Date */}
         <div className="flex items-center justify-between px-4 pb-4 gap-4">
           <div className="flex flex-wrap gap-1.5">
             {skill.tags.map((tag) => (
@@ -166,8 +169,8 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
             ))}
           </div>
           <span className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
-            <Calendar className="h-3 w-3" />
-            {formatPublishedDate(skill.publishedAt) || 'N/A'}
+            {isUpdatedMode ? <Clock3 className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
+            {formatSkillDate(dateValue) || 'N/A'}
           </span>
         </div>
 

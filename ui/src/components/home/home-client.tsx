@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { Calendar, ArrowUpDown } from 'lucide-react'
+import { Calendar, Clock3, ArrowUpDown } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { CategoryList } from '@/components/home/category-list'
 import { MobileSearch } from '@/components/home/mobile-search'
@@ -12,8 +12,9 @@ import { Footer } from '@/components/layout/footer'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import type { Skill } from '@/data/skills'
+import type { SkillDateField } from '@/lib/date'
 
-type SortOrder = 'publishedAt' | 'name'
+type SortOrder = 'publishedAt' | 'updatedAt' | 'name'
 
 interface HomeClientProps {
   skills: Skill[]
@@ -72,6 +73,11 @@ export function HomeClient({ skills, categories }: HomeClientProps) {
         const timeA = a.publishedAt ?? 0
         const timeB = b.publishedAt ?? 0
         return timeB - timeA
+      } else if (sortOrder === 'updatedAt') {
+        // Updated time: newest first (descending)
+        const timeA = a.updatedAt ?? a.publishedAt ?? 0
+        const timeB = b.updatedAt ?? b.publishedAt ?? 0
+        return timeB - timeA
       } else {
         // Name: alphabetical ascending
         const nameA = a.name || a.slug || ''
@@ -106,6 +112,8 @@ export function HomeClient({ skills, categories }: HomeClientProps) {
       closeTimeoutRef.current = null
     }, 300)
   }
+
+  const dateField: SkillDateField = sortOrder === 'updatedAt' ? 'updatedAt' : 'publishedAt'
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -147,6 +155,18 @@ export function HomeClient({ skills, categories }: HomeClientProps) {
                   发布时间
                 </button>
                 <button
+                  onClick={() => setSortOrder('updatedAt')}
+                  className={cn(
+                    'flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors',
+                    sortOrder === 'updatedAt'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <Clock3 className="h-3 w-3" />
+                  更新时间
+                </button>
+                <button
                   onClick={() => setSortOrder('name')}
                   className={cn(
                     'flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors',
@@ -178,6 +198,7 @@ export function HomeClient({ skills, categories }: HomeClientProps) {
                       skill={skill}
                       onClick={() => handleSkillClick(skill.id)}
                       isSelected={selectedSkill === skill.id}
+                      dateField={dateField}
                     />
                   </div>
                 ))}
@@ -197,6 +218,7 @@ export function HomeClient({ skills, categories }: HomeClientProps) {
           <SkillDetail
             skill={selectedSkillData}
             onClose={handleCloseDetail}
+            dateField={dateField}
           />
         </SheetContent>
       </Sheet>

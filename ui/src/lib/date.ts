@@ -5,7 +5,9 @@ const zhCnDateFormatter = new Intl.DateTimeFormat('zh-CN', {
   day: '2-digit',
 })
 
-export function formatPublishedDate(timestamp?: number | null): string {
+export type SkillDateField = 'publishedAt' | 'updatedAt'
+
+export function formatSkillDate(timestamp?: number | null): string {
   if (!timestamp) {
     return ''
   }

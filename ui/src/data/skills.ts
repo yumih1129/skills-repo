@@ -12,6 +12,7 @@ export interface SkillMeta {
   tags: string[]
   version: string
   publishedAt: number
+  updatedAt: number
   license: string
   language: string
   status?: 'active' | 'draft' | 'deprecated' | 'recommended'

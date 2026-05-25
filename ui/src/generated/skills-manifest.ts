@@ -14,6 +14,7 @@ export interface SkillMeta {
   tags: string[]
   version: string
   publishedAt: number
+  updatedAt: number
   license: string
   language: string
   status?: SkillStatus
@@ -55,6 +56,7 @@ const _manifestData = {
       "category": "信息检索",
       "version": "1.4.0",
       "publishedAt": 1747526400000,
+      "updatedAt": 1779728619000,
       "license": "MIT",
       "language": "zh-CN",
       "status": "active",
@@ -81,6 +83,7 @@ const _manifestData = {
       "category": "开发工具",
       "version": "1.0.0",
       "publishedAt": 1779458936701,
+      "updatedAt": 1779458936701,
       "license": "MIT",
       "language": "zh-CN",
       "status": "active",
@@ -107,6 +110,7 @@ const _manifestData = {
       "category": "开发工具",
       "version": "1.0.0",
       "publishedAt": 1779198159000,
+      "updatedAt": 1779198159000,
       "license": "MIT",
       "language": "zh-CN",
       "status": "active",
@@ -132,6 +136,7 @@ const _manifestData = {
       "category": "质量保障",
       "version": "1.0.0",
       "publishedAt": 1779204258000,
+      "updatedAt": 1779204258000,
       "license": "MIT",
       "language": "zh-CN",
       "status": "active",
@@ -158,6 +163,7 @@ const _manifestData = {
       "category": "开发工具",
       "version": "1.1.0",
       "publishedAt": 1779379200000,
+      "updatedAt": 1779379200000,
       "license": "MIT",
       "language": "zh-CN",
       "status": "active",
@@ -184,6 +190,7 @@ const _manifestData = {
       "category": "开发工具",
       "version": "1.0.0",
       "publishedAt": 1779536071000,
+      "updatedAt": 1779536071000,
       "license": "MIT",
       "language": "zh-CN",
       "status": "active",
@@ -200,7 +207,7 @@ const _manifestData = {
     "开发工具",
     "质量保障"
   ],
-  "generatedAt": "2026-05-26T00:44:38.901+08:00"
+  "generatedAt": "2026-05-26T01:08:20.424+08:00"
 } as any
 
 export const manifestData: SkillsManifest = _manifestData
