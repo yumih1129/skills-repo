@@ -36,7 +36,7 @@ export function SkillCard({ skill, onClick, isSelected, dateField = 'publishedAt
         isSelected && 'border-primary/50'
       )}>
         {/* Zone 1: Icon + metadata header */}
-        <div className="flex gap-4 p-3 pb-0">
+        <div className="flex gap-3 p-3 pb-0">
           <SkillIcon
             icon={skill.icon}
             iconType={skill.iconType as 'emoji' | 'library' | 'svg' | undefined}
@@ -73,7 +73,7 @@ export function SkillCard({ skill, onClick, isSelected, dateField = 'publishedAt
 
         {/* Zone 3: Tags + Date */}
         <div className="flex items-center justify-between gap-2 px-3">
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {skill.tags.slice(0, 3).map((tag) => (
               <Badge key={tag} variant="secondary" className="h-5 gap-1 px-2 text-xs font-medium">
                 <Tag className="h-2.5 w-2.5" />
@@ -87,7 +87,7 @@ export function SkillCard({ skill, onClick, isSelected, dateField = 'publishedAt
               </Badge>
             )}
           </div>
-          <span className="inline-flex min-w-[92px] items-center justify-end gap-1 text-xs text-muted-foreground whitespace-nowrap">
+          <span className="inline-flex min-w-23 items-center justify-end gap-1 text-xs text-muted-foreground whitespace-nowrap">
             {isUpdatedMode ? <Clock3 className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
             {formatSkillDate(dateValue)}
           </span>
@@ -103,7 +103,7 @@ export function SkillCard({ skill, onClick, isSelected, dateField = 'publishedAt
           </span>
           <span className="inline-flex items-center gap-1 text-[13px] text-muted-foreground/85">
             更多
-            <ArrowRight className="h-[13px] w-[13px] text-muted-foreground/75 transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
+            <ArrowRight className="h-3.25 w-3.25 text-muted-foreground/75 transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
           </span>
         </div>
       </Card>

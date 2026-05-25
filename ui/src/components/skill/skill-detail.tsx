@@ -160,7 +160,7 @@ export function SkillDetail({ skill, onClose, dateField = 'publishedAt' }: Skill
 
         {/* Tags + Date */}
         <div className="flex items-center justify-between px-4 pb-4 gap-4">
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {skill.tags.map((tag) => (
               <Badge key={tag} variant="secondary" className="text-xs gap-1">
                 <Tag className="h-2.5 w-2.5" />
