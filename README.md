@@ -32,6 +32,7 @@
 - `skill-evaluate`
 - `skill-manual-generate`
 - `skill-stabilize`
+- `wechat-article-html-exporter`
 
 ## 数据说明
 
