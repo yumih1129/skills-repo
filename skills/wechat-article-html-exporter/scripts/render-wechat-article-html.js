@@ -1,0 +1,707 @@
+#!/usr/bin/env node
+const fs = require('fs');
+const path = require('path');
+const presets = require('../assets/theme-presets.js');
+
+function parseArgs(argv) {
+  const out = { unknown: [] };
+  for (let i = 2; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--input') out.input = argv[++i];
+    else if (arg === '--input-base64') out.inputBase64 = argv[++i];
+    else if (arg === '--output') out.output = argv[++i];
+    else if (arg === '--theme') out.theme = argv[++i];
+    else if (arg === '--title') out.title = argv[++i];
+    else if (arg === '--stdin') out.stdin = true;
+    else if (arg === '--overwrite') out.overwrite = true;
+    else if (arg === '--rename-if-exists') out.renameIfExists = true;
+    else if (arg === '--help' || arg === '-h') out.help = true;
+    else out.unknown.push(arg);
+  }
+  return out;
+}
+
+function readJson(options) {
+  let raw = '';
+  if (options.inputBase64) {
+    raw = Buffer.from(options.inputBase64, 'base64').toString('utf8');
+  } else if (options.stdin) {
+    raw = fs.readFileSync(0, 'utf8');
+  } else {
+    raw = fs.readFileSync(options.input, 'utf8');
+  }
+  return JSON.parse(raw);
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function styleFrom(preset, key, fallback = '') {
+  return preset[key] || fallback || '';
+}
+
+function normalizeTheme(themeName) {
+  if (!themeName) return 'wechat-native-template';
+  const rawName = String(themeName).trim();
+  if (presets.themes[rawName]) return rawName;
+  const key = rawName.toLowerCase();
+  const mapping = {
+    'wechat-native': 'wechat-native-template',
+    'wechat native': 'wechat-native-template',
+    '微信原生': 'wechat-native-template',
+    '原生微信': 'wechat-native-template',
+    '公众号原生': 'wechat-native-template',
+    'academic-paper-template': 'academic-paper-template',
+    academicPaper: 'academic-paper-template',
+    'academic-paper': 'academic-paper-template',
+    'academic paper': 'academic-paper-template',
+    wechatDefault: 'academic-paper-template',
+    'wechat-default': 'academic-paper-template',
+    'wechat default': 'academic-paper-template',
+    'wechat-default-template': 'academic-paper-template',
+    '微信默认': 'academic-paper-template',
+    '默认微信': 'academic-paper-template',
+    '论文主题': 'academic-paper-template',
+    '论文风': 'academic-paper-template',
+    paper: 'academic-paper-template',
+    'paper-theme': 'academic-paper-template',
+    '学术': 'academic-paper-template',
+    '论文': 'academic-paper-template',
+    apple: 'apple-style-template',
+    'apple-style': 'apple-style-template',
+    'apple style': 'apple-style-template',
+    '苹果': 'apple-style-template',
+    '苹果风': 'apple-style-template',
+    'claude-code': 'claude-code-template',
+    'claude code': 'claude-code-template',
+    claude: 'claude-code-template',
+    'claude风': 'claude-code-template',
+    codex: 'codex-template',
+    'codex风': 'codex-template',
+    feishu: 'feishu-template',
+    '飞书': 'feishu-template',
+    '飞书风': 'feishu-template',
+    juejin: 'juejin-template',
+    '掘金': 'juejin-template',
+    '掘金风': 'juejin-template',
+    notion: 'notion-template',
+    'notion风': 'notion-template',
+    '知识库': 'notion-template',
+    '知识库风': 'notion-template',
+    obsidian: 'obsidian-template',
+    '黑曜石': 'obsidian-template',
+    '笔记库': 'obsidian-template'
+  };
+  return mapping[key] || mapping[rawName] || 'wechat-native-template';
+}
+
+function mergePreset(themeName) {
+  const theme = presets.themes[themeName] || presets.themes['wechat-native-template'];
+  return {
+    ...presets.base,
+    ...theme,
+  };
+}
+
+function getThemeCapabilities(themeName) {
+  return presets.themeCapabilities?.[themeName] || presets.themeCapabilities?.['wechat-native-template'] || {};
+}
+
+function renderText(text, preset) {
+  const codeStyle = styleFrom(preset, 'inlineCode', presets.base.inlineCode);
+  return String(text ?? '').split(/(`[^`]+`)/g).map((part) => {
+    if (/^`[^`]+`$/.test(part)) {
+      return `<code style="${codeStyle}">${escapeHtml(part.slice(1, -1))}</code>`;
+    }
+    return escapeHtml(part);
+  }).join('');
+}
+
+function renderParagraph(text, preset, overrideStyle) {
+  const style = overrideStyle || styleFrom(preset, 'paragraph', presets.base.paragraph);
+  return `<p style="${style}">${renderText(text, preset)}</p>`;
+}
+
+function renderEyebrow(eyebrow, preset) {
+  if (!isNonEmptyText(eyebrow)) return '';
+  return `<p style="${styleFrom(preset, 'eyebrow', presets.base.eyebrow)}">${escapeHtml(eyebrow)}</p>`;
+}
+
+function renderMeta(meta, preset) {
+  if (meta == null) return '';
+  const items = Array.isArray(meta) ? meta : [meta];
+  const styleKeys = ['metaPrimary', 'metaSecondary', 'metaTertiary'];
+  return items.map((item, index) => {
+    const text = typeof item === 'string' ? item : item?.text;
+    const customStyle = typeof item === 'object' && item && !Array.isArray(item) ? item.style : '';
+    if (!isNonEmptyText(text)) {
+      throw new Error(`meta[${index}] must be non-empty.`);
+    }
+    const style = customStyle || styleFrom(preset, styleKeys[index], styleFrom(preset, 'metaLine', presets.base.metaLine));
+    return `<p style="${style}">${renderText(text, preset)}</p>`;
+  }).join('');
+}
+
+function renderLead(lead, preset) {
+  if (!lead) return '';
+  if (typeof lead === 'string') {
+    return renderParagraph(lead, preset, styleFrom(preset, 'lead', styleFrom(preset, 'paragraph', presets.base.paragraph)).replace('text-indent:2em;', 'text-indent:0;'));
+  }
+
+  const title = lead.title ? `<p style="${styleFrom(preset, 'leadTitle', presets.base.leadTitle)}">${escapeHtml(lead.title)}</p>` : '';
+  const textStyle = styleFrom(preset, 'leadText', styleFrom(preset, 'lead', styleFrom(preset, 'paragraph', presets.base.paragraph))).replace('text-indent:2em;', 'text-indent:0;');
+  const text = lead.text ? renderParagraph(lead.text, preset, textStyle) : '';
+  return title + text;
+}
+
+function renderKeywords(keywords, preset) {
+  if (keywords == null) return '';
+  let label = '关键词：';
+  let value = '';
+
+  if (typeof keywords === 'string') {
+    value = keywords;
+  } else if (Array.isArray(keywords)) {
+    value = keywords.join('；');
+  } else if (typeof keywords === 'object') {
+    label = isNonEmptyText(keywords.label) ? keywords.label : label;
+    if (Array.isArray(keywords.items)) {
+      value = keywords.items.join('；');
+    } else {
+      value = keywords.text || '';
+    }
+  }
+
+  if (!isNonEmptyText(value)) return '';
+  const lineStyle = styleFrom(preset, 'keywordLine', presets.base.keywordLine);
+  const labelStyle = styleFrom(preset, 'keywordLabel', presets.base.keywordLabel);
+  return `<p style="${lineStyle}"><strong style="${labelStyle}">${escapeHtml(label)}</strong>${renderText(value, preset)}</p>`;
+}
+
+function renderList(block, preset) {
+  const tag = block.ordered ? 'ol' : 'ul';
+  const listStyle = styleFrom(preset, 'list', presets.base.list);
+  const itemStyle = styleFrom(preset, 'listItem', presets.base.listItem);
+  const items = (block.items || []).map((item) => `<li style="${itemStyle}">${renderText(item, preset)}</li>`).join('');
+  return `<${tag} style="${listStyle}">${items}</${tag}>`;
+}
+
+function renderQuote(text, preset) {
+  const quoteStyle = styleFrom(preset, 'quote', '');
+  const quoteTextStyle = styleFrom(preset, 'quoteText', styleFrom(preset, 'paragraph', presets.base.paragraph)).replace('text-indent:2em;', 'text-indent:0;');
+  return `<blockquote style="${quoteStyle}">${renderParagraph(text, preset, quoteTextStyle)}</blockquote>`;
+}
+
+function renderCallout(block, preset) {
+  const wrapperStyle = styleFrom(preset, 'callout', presets.base.callout);
+  const labelStyle = styleFrom(preset, 'calloutLabel', presets.base.calloutLabel);
+  const textStyle = styleFrom(preset, 'calloutText', presets.base.calloutText);
+  const label = isNonEmptyText(block.label) ? `<p style="${labelStyle}">${escapeHtml(block.label)}</p>` : '';
+  const text = `<p style="${textStyle}">${renderText(block.text, preset)}</p>`;
+  return `<section style="${wrapperStyle}">${label}${text}</section>`;
+}
+
+function renderCode(block, preset) {
+  const codeStyle = styleFrom(preset, 'code', presets.base.code);
+  const codeInnerStyle = styleFrom(preset, 'codeInner', presets.base.codeInner);
+  const language = block.language || 'text';
+  return `<pre style="${codeStyle}" data-language="${escapeHtml(language)}"><code style="${codeInnerStyle}">${escapeHtml(block.text || '')}</code></pre>`;
+}
+
+function renderTable(block, preset) {
+  const wrapperStyle = styleFrom(preset, 'tableWrapper', presets.base.tableWrapper);
+  const labelStyle = styleFrom(preset, 'tableLabel', presets.base.tableLabel);
+  const noteStyle = styleFrom(preset, 'tableNote', presets.base.tableNote);
+  const noteEmphasisStyle = styleFrom(preset, 'tableNoteEmphasis', presets.base.tableNoteEmphasis);
+  const tableStyle = styleFrom(preset, 'table', presets.base.table);
+  const thStyle = styleFrom(preset, 'th', presets.base.th);
+  const tdStrongStyle = styleFrom(preset, 'tdStrong', presets.base.tdStrong);
+  const tdStyle = styleFrom(preset, 'td', presets.base.td);
+  const headers = block.headers || [];
+  const rows = block.rows || [];
+  const widths = Array.isArray(block.columnWidths) ? block.columnWidths : [];
+
+  const label = isNonEmptyText(block.label) ? `<p style="${labelStyle}">${escapeHtml(block.label)}</p>` : '';
+  let note = '';
+  if (isNonEmptyText(block.note)) {
+    note = block.noteEmphasis
+      ? `<p style="${noteStyle}"><em style="${noteEmphasisStyle}">${renderText(block.note, preset)}</em></p>`
+      : `<p style="${noteStyle}">${renderText(block.note, preset)}</p>`;
+  }
+
+  const thead = headers.length
+    ? `<thead><tr>${headers.map((cell, index) => {
+      const widthStyle = isNonEmptyText(widths[index]) ? `width:${widths[index]};` : '';
+      return `<th style="${thStyle}${widthStyle}">${renderText(cell, preset)}</th>`;
+    }).join('')}</tr></thead>`
+    : '';
+  const tbody = rows.length
+    ? `<tbody>${rows.map((row) => `<tr>${row.map((cell, index) => {
+      const cellStyle = index === 0 ? tdStrongStyle : tdStyle;
+      return `<td style="${cellStyle}">${renderText(cell, preset)}</td>`;
+    }).join('')}</tr>`).join('')}</tbody>`
+    : '';
+
+  return `<section style="${wrapperStyle}">${label}${note}<table cellpadding="0" cellspacing="0" style="${tableStyle}">${thead}${tbody}</table></section>`;
+}
+
+function renderImage(block, preset) {
+  const wrapperStyle = styleFrom(preset, 'imageWrapper', presets.base.imageWrapper);
+  const imageStyle = styleFrom(preset, 'image', presets.base.image);
+  const captionStyle = styleFrom(preset, 'imageCaption', presets.base.imageCaption);
+  const caption = block.caption ? `<p style="${captionStyle}">${escapeHtml(block.caption)}</p>` : '';
+  return `<section style="${wrapperStyle}"><img src="${escapeHtml(block.src || '')}" alt="${escapeHtml(block.alt || '')}" style="${imageStyle}" />${caption}</section>`;
+}
+
+function renderBlock(block, preset) {
+  switch (block.type) {
+    case 'paragraph':
+      return renderParagraph(block.text, preset);
+    case 'quote':
+      return renderQuote(block.text, preset);
+    case 'callout':
+      return renderCallout(block, preset);
+    case 'list':
+      return renderList(block, preset);
+    case 'table':
+      return renderTable(block, preset);
+    case 'code':
+      return renderCode(block, preset);
+    case 'image':
+      return renderImage(block, preset);
+    default:
+      throw new Error(`Unsupported block type: ${block.type || 'missing'}.`);
+  }
+}
+
+function renderSection(section, preset) {
+  const level = section.level === 3 ? 3 : 2;
+  const headingStyle = styleFrom(preset, level === 3 ? 'h3' : 'h2', '');
+  const headingTag = level === 3 ? 'h3' : 'h2';
+  const title = section.heading ? `<${headingTag} style="${headingStyle}">${escapeHtml(section.heading)}</${headingTag}>` : '';
+  const blocks = (section.blocks || []).map((block) => renderBlock(block, preset)).join('');
+  return `<section style="${styleFrom(preset, 'sectionWrapper', presets.base.sectionWrapper)}">${title}${blocks}</section>`;
+}
+
+function renderClosing(closing, preset) {
+  if (!closing) return '';
+  const items = Array.isArray(closing) ? closing : [closing];
+  return items.map((item) => {
+    if (typeof item === 'string') {
+      return renderParagraph(item, preset, styleFrom(preset, 'closing', presets.base.closing));
+    }
+    return renderBlock({ ...item, type: item.type || 'paragraph' }, preset);
+  }).join('');
+}
+
+function isNonEmptyText(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function validateBlock(block, location) {
+  if (!block || typeof block !== 'object' || Array.isArray(block)) {
+    throw new Error(`${location} must be an object block.`);
+  }
+  const type = block.type || 'paragraph';
+  if (type === 'callout') {
+    if (!isNonEmptyText(block.text)) {
+      throw new Error(`${location}.callout requires non-empty text.`);
+    }
+    return;
+  }
+  const allowedTypes = new Set(['paragraph', 'quote', 'callout', 'list', 'table', 'code', 'image']);
+  if (!allowedTypes.has(type)) {
+    throw new Error(`${location} has unsupported block type: ${type}.`);
+  }
+  if ((type === 'paragraph' || type === 'quote') && !isNonEmptyText(block.text)) {
+    throw new Error(`${location}.${type} requires non-empty text.`);
+  }
+  if (type === 'list') {
+    if (!Array.isArray(block.items) || block.items.length === 0) {
+      throw new Error(`${location}.list requires non-empty items.`);
+    }
+    block.items.forEach((item, index) => {
+      if (!isNonEmptyText(String(item ?? ''))) {
+        throw new Error(`${location}.list.items[${index}] must be non-empty.`);
+      }
+    });
+  }
+  if (type === 'table') {
+    if (!Array.isArray(block.headers) || block.headers.length === 0) {
+      throw new Error(`${location}.table requires non-empty headers.`);
+    }
+    if (!Array.isArray(block.rows) || block.rows.length === 0) {
+      throw new Error(`${location}.table requires non-empty rows.`);
+    }
+    block.rows.forEach((row, rowIndex) => {
+      if (!Array.isArray(row) || row.length !== block.headers.length) {
+        throw new Error(`${location}.table.rows[${rowIndex}] must match header length.`);
+      }
+    });
+    if (block.columnWidths != null) {
+      if (!Array.isArray(block.columnWidths) || block.columnWidths.length !== block.headers.length) {
+        throw new Error(`${location}.table.columnWidths must match header length when provided.`);
+      }
+    }
+  }
+  if (type === 'code' && !isNonEmptyText(block.text)) {
+    throw new Error(`${location}.code requires non-empty text.`);
+  }
+  if (type === 'image' && !isNonEmptyText(block.src)) {
+    throw new Error(`${location}.image requires non-empty src.`);
+  }
+}
+
+function validateLead(lead) {
+  if (lead == null) return;
+  if (typeof lead === 'string') {
+    if (!isNonEmptyText(lead)) throw new Error('lead must be non-empty when provided.');
+    return;
+  }
+  if (typeof lead !== 'object' || Array.isArray(lead)) {
+    throw new Error('lead must be a string or object.');
+  }
+  if (!isNonEmptyText(lead.text)) {
+    throw new Error('lead.text is required when lead is an object.');
+  }
+}
+
+function validateArticleInput(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new Error('Article input must be an object.');
+  }
+  if (!isNonEmptyText(input.title || input.titleText)) {
+    throw new Error('Article input requires a non-empty title.');
+  }
+  if (input.eyebrow != null && !isNonEmptyText(input.eyebrow)) {
+    throw new Error('eyebrow must be non-empty when provided.');
+  }
+  if (input.meta != null) {
+    const metaItems = Array.isArray(input.meta) ? input.meta : [input.meta];
+    metaItems.forEach((item, index) => {
+      const text = typeof item === 'string' ? item : item?.text;
+      if (!isNonEmptyText(text)) {
+        throw new Error(`meta[${index}] must be non-empty.`);
+      }
+    });
+  }
+  validateLead(input.lead);
+  if (input.keywords != null) {
+    const keywords = input.keywords;
+    const value = typeof keywords === 'string'
+      ? keywords
+      : Array.isArray(keywords)
+        ? keywords.join('；')
+        : Array.isArray(keywords.items)
+          ? keywords.items.join('；')
+          : keywords.text;
+    if (!isNonEmptyText(value || '')) {
+      throw new Error('keywords must be non-empty when provided.');
+    }
+  }
+  if (input.blocks != null) {
+    if (!Array.isArray(input.blocks)) throw new Error('blocks must be an array when provided.');
+    input.blocks.forEach((block, index) => validateBlock(block, `blocks[${index}]`));
+  }
+  if (!Array.isArray(input.sections) || input.sections.length === 0) {
+    throw new Error('Article input requires at least one section.');
+  }
+  input.sections.forEach((section, sectionIndex) => {
+    if (!section || typeof section !== 'object' || Array.isArray(section)) {
+      throw new Error(`sections[${sectionIndex}] must be an object.`);
+    }
+    if (section.level != null && section.level !== 2 && section.level !== 3) {
+      throw new Error(`sections[${sectionIndex}].level must be 2 or 3.`);
+    }
+    if (!isNonEmptyText(section.heading)) {
+      throw new Error(`sections[${sectionIndex}].heading is required.`);
+    }
+    if (!Array.isArray(section.blocks) || section.blocks.length === 0) {
+      throw new Error(`sections[${sectionIndex}].blocks must be a non-empty array.`);
+    }
+    section.blocks.forEach((block, blockIndex) => validateBlock(block, `sections[${sectionIndex}].blocks[${blockIndex}]`));
+  });
+  if (input.closing != null) {
+    const closing = Array.isArray(input.closing) ? input.closing : [input.closing];
+    closing.forEach((item, index) => {
+      if (typeof item === 'string') {
+        if (!isNonEmptyText(item)) throw new Error(`closing[${index}] must be non-empty.`);
+      } else {
+        validateBlock({ ...item, type: item.type || 'paragraph' }, `closing[${index}]`);
+      }
+    });
+  }
+}
+
+function collectBlocks(input) {
+  const blocks = [];
+  if (Array.isArray(input.blocks)) {
+    input.blocks.forEach((block, index) => blocks.push({ block, location: `blocks[${index}]` }));
+  }
+  (input.sections || []).forEach((section, sectionIndex) => {
+    (section.blocks || []).forEach((block, blockIndex) => {
+      blocks.push({ block, location: `sections[${sectionIndex}].blocks[${blockIndex}]` });
+    });
+  });
+  const closing = Array.isArray(input.closing) ? input.closing : input.closing != null ? [input.closing] : [];
+  closing.forEach((item, index) => {
+    if (typeof item === 'object' && item && !Array.isArray(item)) {
+      blocks.push({ block: item, location: `closing[${index}]` });
+    }
+  });
+  return blocks;
+}
+
+function collectThemeMappingIssues(input, themeName) {
+  const capabilities = getThemeCapabilities(themeName);
+  const issues = [];
+
+  if (input.eyebrow != null && capabilities.eyebrow === false) {
+    issues.push('eyebrow');
+  }
+  if (input.meta != null && capabilities.meta === false) {
+    issues.push('meta');
+  }
+  if (input.keywords != null && capabilities.keywords === false) {
+    issues.push('keywords');
+  }
+
+  collectBlocks(input).forEach(({ block, location }) => {
+    if ((block.type || 'paragraph') === 'callout' && capabilities.callout === false) {
+      issues.push(`callout:${location}`);
+    }
+  });
+
+  return issues;
+}
+
+function resolveRenderableTheme(input, requestedThemeName) {
+  const normalizedTheme = normalizeTheme(requestedThemeName);
+  if (normalizedTheme === 'wechat-native-template') {
+    return { requestedTheme: normalizedTheme, effectiveTheme: normalizedTheme, downgraded: false, issues: [] };
+  }
+
+  const issues = collectThemeMappingIssues(input, normalizedTheme);
+  if (issues.length > 0) {
+    return {
+      requestedTheme: normalizedTheme,
+      effectiveTheme: 'wechat-native-template',
+      downgraded: true,
+      issues,
+    };
+  }
+
+  return { requestedTheme: normalizedTheme, effectiveTheme: normalizedTheme, downgraded: false, issues: [] };
+}
+
+function buildHtml(input) {
+  validateArticleInput(input);
+  const themePlan = resolveRenderableTheme(input, input.theme);
+  const themeName = themePlan.effectiveTheme;
+  const preset = mergePreset(themeName);
+  const title = input.title || input.titleText || '未命名文章';
+  const eyebrow = input.eyebrow || null;
+  const meta = input.meta || null;
+  const lead = input.lead || null;
+  const keywords = input.keywords || null;
+  const sections = input.sections || [];
+  const topBlocks = input.blocks || [];
+  const closing = input.closing || null;
+
+  const bodyStyle = styleFrom(preset, 'body', presets.base.body);
+  const articleStyle = styleFrom(preset, 'article', presets.base.article);
+  const titleStyle = styleFrom(preset, 'title', '');
+
+  const html = [
+    '<!DOCTYPE html>',
+    '<html lang="zh-CN">',
+    '<head>',
+    '<meta charset="UTF-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+    '<meta name="format-detection" content="telephone=no,email=no,address=no">',
+    `<title>${escapeHtml(title)}</title>`,
+    '</head>',
+    `<body style="${bodyStyle}">`,
+    `<article style="${articleStyle}">`,
+    renderEyebrow(eyebrow, preset),
+    `<h1 style="${titleStyle}">${escapeHtml(title)}</h1>`,
+    renderMeta(meta, preset),
+    renderLead(lead, preset),
+    renderKeywords(keywords, preset),
+    topBlocks.map((block) => renderBlock(block, preset)).join(''),
+    sections.map((section) => renderSection(section, preset)).join(''),
+    renderClosing(closing, preset),
+    '</article>',
+    '</body>',
+    '</html>'
+  ].join('');
+
+  return html;
+}
+
+function validateHtml(html) {
+  const banned = /<(script|iframe|form|style)\b|<div\b/i;
+  if (banned.test(html)) {
+    throw new Error('Generated HTML contains banned tags.');
+  }
+  if (!/<!DOCTYPE html>/i.test(html) || !/<html\b/i.test(html) || !/<head\b/i.test(html) || !/<body\b/i.test(html) || !/<article\b/i.test(html)) {
+    throw new Error('Generated HTML is missing required document structure.');
+  }
+  const articleMatches = html.match(/<article\b/gi) || [];
+  if (articleMatches.length !== 1) {
+    throw new Error('Generated HTML must contain exactly one article.');
+  }
+  if (/<link\b[^>]*rel=["']?stylesheet/i.test(html) || /position\s*:\s*fixed/i.test(html)) {
+    throw new Error('Generated HTML contains external CSS or fixed positioning.');
+  }
+  const missingInlineStyle = html.match(/<(body|article|section|h1|h2|h3|p|blockquote|ul|ol|li|table|th|td|pre|img)\b(?![^>]*\sstyle=)/i);
+  if (missingInlineStyle) {
+    throw new Error(`Generated HTML has a key node without inline style: ${missingInlineStyle[1]}.`);
+  }
+}
+
+function ensureDir(filePath) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+}
+
+function resolveOutputPath(outputPath) {
+  if (!isNonEmptyText(outputPath)) {
+    throw new Error('Missing --output.');
+  }
+  const target = path.resolve(outputPath);
+  if (fs.existsSync(target)) {
+    if (fs.statSync(target).isDirectory()) {
+      return path.join(target, 'wechat-article.html');
+    }
+    if (!path.extname(target)) {
+      throw new Error('Existing output path without extension must be a directory, not a file.');
+    }
+  }
+  const ext = path.extname(target).toLowerCase();
+  if (!ext) {
+    return path.join(target, 'wechat-article.html');
+  }
+  if (ext === '.md') {
+    return path.join(path.dirname(target), `${path.basename(target, ext)}.html`);
+  }
+  if (ext === '.html' || ext === '.htm') {
+    return target;
+  }
+  throw new Error('Output path must be a directory, .html/.htm file, or .md naming hint.');
+}
+
+function prepareOutputPath(outputPath, options = {}) {
+  const finalPath = resolveOutputPath(outputPath);
+  if (!fs.existsSync(finalPath) || options.overwrite) {
+    return finalPath;
+  }
+  if (!options.renameIfExists) {
+    throw new Error(`Output file already exists: ${finalPath}. Use --overwrite or --rename-if-exists.`);
+  }
+  const ext = path.extname(finalPath);
+  const dir = path.dirname(finalPath);
+  const base = path.basename(finalPath, ext);
+  for (let index = 1; index < 1000; index += 1) {
+    const candidate = path.join(dir, `${base}-${index}${ext}`);
+    if (!fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  throw new Error(`Unable to allocate renamed output path for: ${finalPath}.`);
+}
+
+function printHelp() {
+  const lines = [
+    'Usage:',
+    '  node render-wechat-article-html.js --stdin --output <path> [--theme <theme>] [--title <title>] [--overwrite|--rename-if-exists]',
+    '  node render-wechat-article-html.js --input <json-file> --output <path> [--theme <theme>] [--title <title>] [--overwrite|--rename-if-exists]',
+    '  node render-wechat-article-html.js --input-base64 <base64> --output <path> [--theme <theme>] [--title <title>] [--overwrite|--rename-if-exists]',
+    '',
+    'Input options:',
+    '  --stdin           Read article JSON from stdin.',
+    '  --input           Read article JSON from a UTF-8 file.',
+    '  --input-base64    Read article JSON from a UTF-8 base64 string.',
+    '',
+    'Output options:',
+    '  --output          Directory, .html/.htm file, or .md naming hint.',
+    '  --overwrite       Allow overwriting an existing output file.',
+    '  --rename-if-exists  Auto-rename when output file already exists.',
+  ];
+  process.stdout.write(`${lines.join('\n')}\n`);
+}
+
+function main() {
+  const args = parseArgs(process.argv);
+  if (args.help) {
+    printHelp();
+    return;
+  }
+  if (args.unknown.length > 0) {
+    throw new Error(`Unknown argument(s): ${args.unknown.join(', ')}.`);
+  }
+
+  const inputModeCount = [args.input, args.stdin, args.inputBase64].filter(Boolean).length;
+  if (inputModeCount === 0) {
+    throw new Error('Missing --input, --stdin, or --input-base64.');
+  }
+  if (inputModeCount > 1) {
+    throw new Error('Use exactly one of --input, --stdin, or --input-base64.');
+  }
+  if (!args.output) {
+    throw new Error('Missing --output.');
+  }
+
+  const input = readJson(args);
+  const articleInput = { ...input, theme: args.theme || input.theme, title: args.title || input.title };
+  const themePlan = resolveRenderableTheme(articleInput, articleInput.theme);
+  const html = buildHtml(articleInput);
+  validateHtml(html);
+  const outputPath = prepareOutputPath(args.output, {
+    overwrite: args.overwrite,
+    renameIfExists: args.renameIfExists,
+  });
+  ensureDir(outputPath);
+  fs.writeFileSync(outputPath, html, 'utf8');
+  process.stdout.write(JSON.stringify({
+    output: outputPath,
+    requestedTheme: themePlan.requestedTheme,
+    effectiveTheme: themePlan.effectiveTheme,
+    downgradedToNative: themePlan.downgraded,
+    downgradeReasons: themePlan.issues,
+  }, null, 2));
+}
+
+module.exports = {
+  buildHtml,
+  escapeHtml,
+  mergePreset,
+  normalizeTheme,
+  printHelp,
+  prepareOutputPath,
+  parseArgs,
+  renderBlock,
+  renderClosing,
+  renderLead,
+  renderSection,
+  renderText,
+  resolveRenderableTheme,
+  resolveOutputPath,
+  validateArticleInput,
+  validateHtml,
+  collectThemeMappingIssues,
+};
+
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error.message || String(error));
+    process.exit(1);
+  }
+}
