@@ -22,7 +22,7 @@ export function CategoryList({ categories, skills, selectedCategory, onCategoryC
   return (
     <div className="space-y-2">
       <div className="mb-4 flex items-center gap-2">
-        <h3 className="text-base font-medium leading-[30px]">技能分类</h3>
+        <h3 className="text-base font-medium leading-7.5">技能分类</h3>
         <div className="group relative inline-flex items-center">
           <button
             type="button"
