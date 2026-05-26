@@ -138,7 +138,7 @@ export function HomeClient({ skills, categories }: HomeClientProps) {
             <MobileSearch searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
             <div className="mb-4 flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
+              <span className="text-base leading-[30px] text-muted-foreground">
                 {filteredSkills.length} 个技能
               </span>
               <div className="flex items-center gap-1 bg-muted rounded-lg p-0.75">
