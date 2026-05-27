@@ -13,7 +13,7 @@ export const siteConfig = {
   footer: {
     text: '✦ SKILLS',
     repoName: 'skills-repo',
-    license: 'MIT License',
+    license: 'Apache License 2.0',
   },
 } as const
 

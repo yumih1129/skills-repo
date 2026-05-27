@@ -57,7 +57,7 @@ const _manifestData = {
       "version": "1.7.0",
       "publishedAt": 1747526400000,
       "updatedAt": 1779742306000,
-      "license": "MIT",
+      "license": "Apache-2.0",
       "language": "zh-CN",
       "status": "active",
       "id": "news-briefing-search",
@@ -84,7 +84,7 @@ const _manifestData = {
       "version": "1.0.0",
       "publishedAt": 1779458936701,
       "updatedAt": 1779458936701,
-      "license": "MIT",
+      "license": "Apache-2.0",
       "language": "zh-CN",
       "status": "active",
       "id": "requirements-brief",
@@ -111,7 +111,7 @@ const _manifestData = {
       "version": "1.0.0",
       "publishedAt": 1779198159000,
       "updatedAt": 1779198159000,
-      "license": "MIT",
+      "license": "Apache-2.0",
       "language": "zh-CN",
       "status": "active",
       "id": "skill-create",
@@ -137,7 +137,7 @@ const _manifestData = {
       "version": "1.1.0",
       "publishedAt": 1779204258000,
       "updatedAt": 1779740560000,
-      "license": "MIT",
+      "license": "Apache-2.0",
       "language": "zh-CN",
       "status": "active",
       "id": "skill-evaluate",
@@ -164,7 +164,7 @@ const _manifestData = {
       "version": "1.1.0",
       "publishedAt": 1779379200000,
       "updatedAt": 1779736111866,
-      "license": "MIT",
+      "license": "Apache-2.0",
       "language": "zh-CN",
       "status": "active",
       "id": "skill-manual-generate",
@@ -191,7 +191,7 @@ const _manifestData = {
       "version": "1.0.0",
       "publishedAt": 1779536071000,
       "updatedAt": 1779536071000,
-      "license": "MIT",
+      "license": "Apache-2.0",
       "language": "zh-CN",
       "status": "active",
       "id": "skill-stabilize",
@@ -217,7 +217,7 @@ const _manifestData = {
       "version": "1.5.0",
       "publishedAt": 1779806315767,
       "updatedAt": 1779895836000,
-      "license": "MIT",
+      "license": "Apache-2.0",
       "language": "zh-CN",
       "status": "active",
       "id": "wechat-article-generator",
@@ -234,7 +234,7 @@ const _manifestData = {
     "质量保障",
     "内容创作"
   ],
-  "generatedAt": "2026-05-27T23:43:56.853+08:00"
+  "generatedAt": "2026-05-28T00:30:27+08:00"
 } as any
 
 export const manifestData: SkillsManifest = _manifestData
