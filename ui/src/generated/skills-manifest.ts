@@ -214,9 +214,9 @@ const _manifestData = {
         "多主题"
       ],
       "category": "内容创作",
-      "version": "1.5.0",
+      "version": "1.5.1",
       "publishedAt": 1779806315767,
-      "updatedAt": 1779895836000,
+      "updatedAt": 1779903305000,
       "license": "Apache-2.0",
       "language": "zh-CN",
       "status": "active",
@@ -234,7 +234,7 @@ const _manifestData = {
     "质量保障",
     "内容创作"
   ],
-  "generatedAt": "2026-05-28T00:30:27+08:00"
+  "generatedAt": "2026-05-28T01:49:38.180+08:00"
 } as any
 
 export const manifestData: SkillsManifest = _manifestData

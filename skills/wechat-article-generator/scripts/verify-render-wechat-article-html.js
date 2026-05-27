@@ -51,7 +51,8 @@ function verifyDirectRenderStillWorks() {
 function verifyThemeFallback() {
   assert(renderer.normalizeTheme('unknown-theme') === 'wechat-native-template', 'Unknown theme must fall back to wechat-native-template.');
   assert(renderer.normalizeTheme('论文主题') === 'academic-paper-template', '论文主题 alias must resolve to academic-paper-template.');
-  assert(renderer.normalizeTheme('wechat-default-template') === 'academic-paper-template', 'Legacy theme key must resolve to academic-paper-template.');
+  assert(renderer.normalizeTheme('论文风格') === 'academic-paper-template', '论文风格 alias must resolve to academic-paper-template.');
+  assert(renderer.normalizeTheme('wechat-default-template') === 'wechat-native-template', 'Legacy theme key must no longer resolve to academic-paper-template.');
   assert(renderer.normalizeTheme(undefined) === 'wechat-native-template', 'Missing theme must default to wechat-native-template.');
 }
 
@@ -236,6 +237,8 @@ function verifyThemeGuardrails() {
 
 function verifyStrictPresetMapping() {
   const preset = renderer.mergePreset('obsidian-template');
+  assert(preset.paragraph.includes('text-indent:0;'), 'Non-academic paragraph preset must not indent the first line.');
+  assert(preset.calloutText.includes('text-indent:0;'), 'Non-academic callout text preset must not indent the first line.');
   const html = renderer.buildHtml({
     title: 'Obsidian 标题',
     theme: 'obsidian-template',
@@ -288,6 +291,7 @@ function verifyStrictPresetMapping() {
 
 function verifyAcademicPaperPresetMapping() {
   const preset = renderer.mergePreset('academic-paper-template');
+  assert(preset.paragraph.includes('text-indent:2em;'), 'Academic paragraph preset must preserve first-line indentation.');
   const html = renderer.buildHtml({
     title: '论文标题',
     theme: 'academic-paper-template',
