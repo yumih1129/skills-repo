@@ -3,6 +3,11 @@ const fs = require('fs');
 const path = require('path');
 const presets = require('../assets/theme-presets.js');
 
+const HTML_EXPORT_MODE = 'html-file-export';
+const SOURCE_HTML_EXPORT_MODE = 'source-html-export';
+const DEFAULT_HTML_FILENAME = 'final.html';
+const DEFAULT_SOURCE_FILENAME = 'source.md';
+
 function parseArgs(argv) {
   const out = { unknown: [] };
   for (let i = 2; i < argv.length; i += 1) {
@@ -12,6 +17,7 @@ function parseArgs(argv) {
     else if (arg === '--output') out.output = argv[++i];
     else if (arg === '--theme') out.theme = argv[++i];
     else if (arg === '--title') out.title = argv[++i];
+    else if (arg === '--export-mode') out.exportMode = argv[++i];
     else if (arg === '--stdin') out.stdin = true;
     else if (arg === '--overwrite') out.overwrite = true;
     else if (arg === '--rename-if-exists') out.renameIfExists = true;
@@ -31,6 +37,33 @@ function readJson(options) {
     raw = fs.readFileSync(options.input, 'utf8');
   }
   return JSON.parse(raw);
+}
+
+function isPlainObject(value) {
+  return value != null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function firstDefined(...values) {
+  for (const value of values) {
+    if (value != null) return value;
+  }
+  return undefined;
+}
+
+function collapseInlineText(value) {
+  return String(value ?? '').replace(/\s+/g, ' ').trim();
+}
+
+function countTextLength(value) {
+  return Array.from(collapseInlineText(value)).length;
+}
+
+function isNonEmptyText(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function normalizeMarkdownBody(value) {
+  return String(value ?? '').replace(/^\uFEFF/, '').trim();
 }
 
 function escapeHtml(value) {
@@ -139,7 +172,7 @@ function renderMeta(meta, preset) {
   const styleKeys = ['metaPrimary', 'metaSecondary', 'metaTertiary'];
   return items.map((item, index) => {
     const text = typeof item === 'string' ? item : item?.text;
-    const customStyle = typeof item === 'object' && item && !Array.isArray(item) ? item.style : '';
+    const customStyle = isPlainObject(item) ? item.style : '';
     if (!isNonEmptyText(text)) {
       throw new Error(`meta[${index}] must be non-empty.`);
     }
@@ -151,11 +184,30 @@ function renderMeta(meta, preset) {
 function renderLead(lead, preset) {
   if (!lead) return '';
   if (typeof lead === 'string') {
-    return renderParagraph(lead, preset, styleFrom(preset, 'lead', styleFrom(preset, 'paragraph', presets.base.paragraph)).replace('text-indent:2em;', 'text-indent:0;'));
+    return renderParagraph(
+      lead,
+      preset,
+      styleFrom(preset, 'lead', styleFrom(preset, 'paragraph', presets.base.paragraph)).replace('text-indent:2em;', 'text-indent:0;')
+    );
+  }
+
+  if (preset.leadInlineLabel === true && isNonEmptyText(lead.title) && isNonEmptyText(lead.text)) {
+    const textStyle = styleFrom(
+      preset,
+      'leadText',
+      styleFrom(preset, 'lead', styleFrom(preset, 'paragraph', presets.base.paragraph))
+    ).replace('text-indent:2em;', 'text-indent:0;');
+    const labelStyle = styleFrom(preset, 'leadInlineLabelStyle', styleFrom(preset, 'keywordLabel', presets.base.keywordLabel));
+    const label = /[：:]$/.test(lead.title) ? lead.title : `${lead.title}：`;
+    return `<p style="${textStyle}"><strong style="${labelStyle}">${escapeHtml(label)}</strong>${renderText(lead.text, preset)}</p>`;
   }
 
   const title = lead.title ? `<p style="${styleFrom(preset, 'leadTitle', presets.base.leadTitle)}">${escapeHtml(lead.title)}</p>` : '';
-  const textStyle = styleFrom(preset, 'leadText', styleFrom(preset, 'lead', styleFrom(preset, 'paragraph', presets.base.paragraph))).replace('text-indent:2em;', 'text-indent:0;');
+  const textStyle = styleFrom(
+    preset,
+    'leadText',
+    styleFrom(preset, 'lead', styleFrom(preset, 'paragraph', presets.base.paragraph))
+  ).replace('text-indent:2em;', 'text-indent:0;');
   const text = lead.text ? renderParagraph(lead.text, preset, textStyle) : '';
   return title + text;
 }
@@ -169,7 +221,7 @@ function renderKeywords(keywords, preset) {
     value = keywords;
   } else if (Array.isArray(keywords)) {
     value = keywords.join('；');
-  } else if (typeof keywords === 'object') {
+  } else if (isPlainObject(keywords)) {
     label = isNonEmptyText(keywords.label) ? keywords.label : label;
     if (Array.isArray(keywords.items)) {
       value = keywords.items.join('；');
@@ -194,7 +246,11 @@ function renderList(block, preset) {
 
 function renderQuote(text, preset) {
   const quoteStyle = styleFrom(preset, 'quote', '');
-  const quoteTextStyle = styleFrom(preset, 'quoteText', styleFrom(preset, 'paragraph', presets.base.paragraph)).replace('text-indent:2em;', 'text-indent:0;');
+  const quoteTextStyle = styleFrom(
+    preset,
+    'quoteText',
+    styleFrom(preset, 'paragraph', presets.base.paragraph)
+  ).replace('text-indent:2em;', 'text-indent:0;');
   return `<blockquote style="${quoteStyle}">${renderParagraph(text, preset, quoteTextStyle)}</blockquote>`;
 }
 
@@ -300,8 +356,11 @@ function renderClosing(closing, preset) {
   }).join('');
 }
 
-function isNonEmptyText(value) {
-  return typeof value === 'string' && value.trim().length > 0;
+function extractLeadText(lead) {
+  if (lead == null) return null;
+  if (typeof lead === 'string') return collapseInlineText(lead);
+  if (isPlainObject(lead)) return collapseInlineText(lead.text);
+  return null;
 }
 
 function validateBlock(block, location) {
@@ -364,7 +423,7 @@ function validateLead(lead) {
     if (!isNonEmptyText(lead)) throw new Error('lead must be non-empty when provided.');
     return;
   }
-  if (typeof lead !== 'object' || Array.isArray(lead)) {
+  if (!isPlainObject(lead)) {
     throw new Error('lead must be a string or object.');
   }
   if (!isNonEmptyText(lead.text)) {
@@ -373,7 +432,7 @@ function validateLead(lead) {
 }
 
 function validateArticleInput(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+  if (!isPlainObject(input)) {
     throw new Error('Article input must be an object.');
   }
   if (!isNonEmptyText(input.title || input.titleText)) {
@@ -413,7 +472,7 @@ function validateArticleInput(input) {
     throw new Error('Article input requires at least one section.');
   }
   input.sections.forEach((section, sectionIndex) => {
-    if (!section || typeof section !== 'object' || Array.isArray(section)) {
+    if (!isPlainObject(section)) {
       throw new Error(`sections[${sectionIndex}] must be an object.`);
     }
     if (section.level != null && section.level !== 2 && section.level !== 3) {
@@ -436,6 +495,36 @@ function validateArticleInput(input) {
         validateBlock({ ...item, type: item.type || 'paragraph' }, `closing[${index}]`);
       }
     });
+  }
+}
+
+function validateSource(source) {
+  if (!isPlainObject(source)) {
+    throw new Error('source must be an object.');
+  }
+  if (!isNonEmptyText(source.title)) {
+    throw new Error('source.title is required.');
+  }
+  if (countTextLength(source.title) > 64) {
+    throw new Error('source.title must be 64 characters or fewer.');
+  }
+  if (!isNonEmptyText(source.summary)) {
+    throw new Error('source.summary is required.');
+  }
+  if (countTextLength(source.summary) > 120) {
+    throw new Error('source.summary must be 120 characters or fewer.');
+  }
+  if (!isNonEmptyText(source.coverPrompt)) {
+    throw new Error('source.cover_prompt is required. source.coverPrompt is accepted as a compatibility alias.');
+  }
+  if (!isNonEmptyText(source.markdown)) {
+    throw new Error('source.markdown is required.');
+  }
+  if (/^#(?!#)\s+/m.test(source.markdown)) {
+    throw new Error('source.markdown must not contain a top-level # heading; keep the title in source.title.');
+  }
+  if (/^---\s*$/m.test(source.markdown.split('\n')[0] || '')) {
+    throw new Error('source.markdown must not start with frontmatter; frontmatter is generated separately.');
   }
 }
 
@@ -518,7 +607,7 @@ function buildHtml(input) {
   const articleStyle = styleFrom(preset, 'article', presets.base.article);
   const titleStyle = styleFrom(preset, 'title', '');
 
-  const html = [
+  return [
     '<!DOCTYPE html>',
     '<html lang="zh-CN">',
     '<head>',
@@ -541,8 +630,6 @@ function buildHtml(input) {
     '</body>',
     '</html>'
   ].join('');
-
-  return html;
 }
 
 function validateHtml(html) {
@@ -566,18 +653,148 @@ function validateHtml(html) {
   }
 }
 
-function ensureDir(filePath) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+function hasDirectSourceFields(input) {
+  if (!isPlainObject(input)) return false;
+  return input.summary != null || input.coverPrompt != null || input.cover_prompt != null;
 }
 
-function resolveOutputPath(outputPath) {
+function normalizeSource(rawSource, overrides = {}) {
+  const source = {
+    title: collapseInlineText(firstDefined(overrides.title, rawSource.title, rawSource.titleText)),
+    summary: collapseInlineText(firstDefined(rawSource.summary)),
+    coverPrompt: collapseInlineText(firstDefined(rawSource.coverPrompt, rawSource.cover_prompt)),
+    theme: normalizeTheme(firstDefined(overrides.theme, rawSource.theme)),
+    markdown: normalizeMarkdownBody(firstDefined(rawSource.markdown)),
+  };
+  validateSource(source);
+  return source;
+}
+
+function normalizeArticleFromSource(rawArticle, source, options = {}) {
+  const article = { ...(isPlainObject(rawArticle) ? rawArticle : {}) };
+  delete article.source;
+  delete article.article;
+  delete article.summary;
+  delete article.coverPrompt;
+  delete article.cover_prompt;
+  delete article.markdown;
+
+  const articleTitle = firstDefined(article.title, article.titleText);
+  if (articleTitle != null && collapseInlineText(articleTitle) !== source.title) {
+    throw new Error('article.title must match source.title when source is provided.');
+  }
+
+  const leadText = extractLeadText(article.lead);
+  if (leadText != null && leadText !== source.summary) {
+    throw new Error('article.lead must match source.summary when source is provided.');
+  }
+
+  const explicitTheme = firstDefined(options.theme, article.theme);
+  if (article.theme != null && options.theme == null && normalizeTheme(article.theme) !== source.theme) {
+    throw new Error('article.theme must match source.theme when source is provided.');
+  }
+
+  article.title = source.title;
+  delete article.titleText;
+  article.theme = normalizeTheme(firstDefined(explicitTheme, source.theme));
+
+  if (article.lead == null) {
+    article.lead = article.theme === 'academic-paper-template'
+      ? { title: '摘要', text: source.summary }
+      : source.summary;
+  } else if (typeof article.lead === 'string') {
+    article.lead = source.summary;
+  } else {
+    article.lead = {
+      ...article.lead,
+      text: source.summary,
+    };
+    if (article.theme === 'academic-paper-template' && !isNonEmptyText(article.lead.title)) {
+      article.lead.title = '摘要';
+    }
+  }
+
+  return article;
+}
+
+function normalizeExportInput(input, overrides = {}) {
+  if (!isPlainObject(input)) {
+    throw new Error('Input payload must be an object.');
+  }
+
+  if (input.source == null && !hasDirectSourceFields(input)) {
+    throw new Error('Export input must include source fields: title, summary, cover_prompt, and markdown.');
+  }
+
+  const sourceRaw = input.source != null ? input.source : input;
+  const source = normalizeSource(sourceRaw, overrides);
+  const articleRaw = input.source != null
+    ? (isPlainObject(input.article) ? input.article : input)
+    : (isPlainObject(input.article) ? input.article : input);
+  const articleInput = normalizeArticleFromSource(articleRaw, source, overrides);
+  validateArticleInput(articleInput);
+  return {
+    inputModel: 'source-package',
+    source,
+    articleInput,
+  };
+}
+
+function normalizeExportMode(mode) {
+  if (!mode) return HTML_EXPORT_MODE;
+  const key = String(mode).trim().toLowerCase();
+  const mapping = {
+    [HTML_EXPORT_MODE]: HTML_EXPORT_MODE,
+    'html-only': HTML_EXPORT_MODE,
+    'html-only-export': HTML_EXPORT_MODE,
+    'html': HTML_EXPORT_MODE,
+    [SOURCE_HTML_EXPORT_MODE]: SOURCE_HTML_EXPORT_MODE,
+    'source+html': SOURCE_HTML_EXPORT_MODE,
+    'source-html': SOURCE_HTML_EXPORT_MODE,
+    'source-html-export': SOURCE_HTML_EXPORT_MODE,
+    'bundle': SOURCE_HTML_EXPORT_MODE,
+  };
+  const normalized = mapping[key];
+  if (!normalized) {
+    throw new Error(`Unsupported export mode: ${mode}.`);
+  }
+  return normalized;
+}
+
+function serializeFrontmatterValue(value) {
+  return JSON.stringify(String(value ?? ''));
+}
+
+function buildSourceMarkdown(source) {
+  validateSource(source);
+  return [
+    '---',
+    `title: ${serializeFrontmatterValue(source.title)}`,
+    `summary: ${serializeFrontmatterValue(source.summary)}`,
+    `cover_prompt: ${serializeFrontmatterValue(source.coverPrompt)}`,
+    `theme: ${serializeFrontmatterValue(source.theme)}`,
+    '---',
+    '',
+    source.markdown,
+    ''
+  ].join('\n');
+}
+
+function validateNoSourceLeak(html, source) {
+  if (!source) return;
+  if (html.includes(source.coverPrompt)) {
+    throw new Error('Generated HTML leaked cover_prompt content.');
+  }
+}
+
+function inspectOutputPath(outputPath) {
   if (!isNonEmptyText(outputPath)) {
     throw new Error('Missing --output.');
   }
   const target = path.resolve(outputPath);
   if (fs.existsSync(target)) {
     if (fs.statSync(target).isDirectory()) {
-      return path.join(target, 'wechat-article.html');
+      return { kind: 'directory', target };
     }
     if (!path.extname(target)) {
       throw new Error('Existing output path without extension must be a directory, not a file.');
@@ -585,52 +802,191 @@ function resolveOutputPath(outputPath) {
   }
   const ext = path.extname(target).toLowerCase();
   if (!ext) {
-    return path.join(target, 'wechat-article.html');
+    return { kind: 'directory-path', target };
   }
   if (ext === '.md') {
-    return path.join(path.dirname(target), `${path.basename(target, ext)}.html`);
+    return { kind: 'md-file', target };
   }
   if (ext === '.html' || ext === '.htm') {
-    return target;
+    return { kind: 'html-file', target };
   }
   throw new Error('Output path must be a directory, .html/.htm file, or .md naming hint.');
 }
 
-function prepareOutputPath(outputPath, options = {}) {
-  const finalPath = resolveOutputPath(outputPath);
-  if (!fs.existsSync(finalPath) || options.overwrite) {
-    return finalPath;
+function resolveOutputTargets(outputPath, exportMode) {
+  const inspected = inspectOutputPath(outputPath);
+
+  if (exportMode === HTML_EXPORT_MODE) {
+    if (inspected.kind === 'directory' || inspected.kind === 'directory-path') {
+      return {
+        exportMode,
+        shape: 'html-default',
+        htmlPath: path.join(inspected.target, DEFAULT_HTML_FILENAME),
+      };
+    }
+    if (inspected.kind === 'md-file') {
+      const base = path.basename(inspected.target, '.md');
+      return {
+        exportMode,
+        shape: 'html-derived-from-md',
+        htmlPath: path.join(path.dirname(inspected.target), `${base}.html`),
+      };
+    }
+    return {
+      exportMode,
+      shape: 'html-explicit',
+      htmlPath: inspected.target,
+    };
+  }
+
+  if (inspected.kind === 'directory' || inspected.kind === 'directory-path') {
+    return {
+      exportMode,
+      shape: 'pair-default',
+      dir: inspected.target,
+      sourcePath: path.join(inspected.target, DEFAULT_SOURCE_FILENAME),
+      htmlPath: path.join(inspected.target, DEFAULT_HTML_FILENAME),
+    };
+  }
+
+  if (inspected.kind === 'md-file') {
+    const dir = path.dirname(inspected.target);
+    const base = path.basename(inspected.target, '.md');
+    return {
+      exportMode,
+      shape: 'pair-from-md',
+      dir,
+      base,
+      sourcePath: inspected.target,
+      htmlPath: path.join(dir, `${base}.html`),
+    };
+  }
+
+  const dir = path.dirname(inspected.target);
+  const ext = path.extname(inspected.target);
+  const base = path.basename(inspected.target, ext);
+  return {
+    exportMode,
+    shape: 'pair-from-html',
+    dir,
+    base,
+    htmlExt: ext,
+    sourcePath: path.join(dir, `${base}.source.md`),
+    htmlPath: inspected.target,
+  };
+}
+
+function fileExists(filePath) {
+  return fs.existsSync(filePath);
+}
+
+function prepareHtmlPath(htmlPath, options = {}) {
+  if (!fileExists(htmlPath) || options.overwrite) {
+    return htmlPath;
   }
   if (!options.renameIfExists) {
-    throw new Error(`Output file already exists: ${finalPath}. Use --overwrite or --rename-if-exists.`);
+    throw new Error(`Output file already exists: ${htmlPath}. Use --overwrite or --rename-if-exists.`);
   }
-  const ext = path.extname(finalPath);
-  const dir = path.dirname(finalPath);
-  const base = path.basename(finalPath, ext);
+  const ext = path.extname(htmlPath);
+  const dir = path.dirname(htmlPath);
+  const base = path.basename(htmlPath, ext);
   for (let index = 1; index < 1000; index += 1) {
     const candidate = path.join(dir, `${base}-${index}${ext}`);
-    if (!fs.existsSync(candidate)) {
+    if (!fileExists(candidate)) {
       return candidate;
     }
   }
-  throw new Error(`Unable to allocate renamed output path for: ${finalPath}.`);
+  throw new Error(`Unable to allocate renamed output path for: ${htmlPath}.`);
+}
+
+function prepareOutputTargets(outputPath, exportMode, options = {}) {
+  const targets = resolveOutputTargets(outputPath, exportMode);
+
+  if (exportMode === HTML_EXPORT_MODE) {
+    return {
+      ...targets,
+      htmlPath: prepareHtmlPath(targets.htmlPath, options),
+    };
+  }
+
+  const conflicts = [targets.sourcePath, targets.htmlPath].filter((filePath) => fileExists(filePath));
+  if (conflicts.length === 0 || options.overwrite) {
+    return targets;
+  }
+
+  if (!options.renameIfExists) {
+    throw new Error(`Output file already exists: ${conflicts[0]}. Use --overwrite or --rename-if-exists.`);
+  }
+
+  for (let index = 1; index < 1000; index += 1) {
+    if (targets.shape === 'pair-default') {
+      const candidate = {
+        ...targets,
+        sourcePath: path.join(targets.dir, `source-${index}.md`),
+        htmlPath: path.join(targets.dir, `final-${index}.html`),
+      };
+      if (!fileExists(candidate.sourcePath) && !fileExists(candidate.htmlPath)) {
+        return candidate;
+      }
+      continue;
+    }
+
+    if (targets.shape === 'pair-from-md') {
+      const candidate = {
+        ...targets,
+        sourcePath: path.join(targets.dir, `${targets.base}-${index}.md`),
+        htmlPath: path.join(targets.dir, `${targets.base}-${index}.html`),
+      };
+      if (!fileExists(candidate.sourcePath) && !fileExists(candidate.htmlPath)) {
+        return candidate;
+      }
+      continue;
+    }
+
+    const candidate = {
+      ...targets,
+      sourcePath: path.join(targets.dir, `${targets.base}-${index}.source.md`),
+      htmlPath: path.join(targets.dir, `${targets.base}-${index}${targets.htmlExt}`),
+    };
+    if (!fileExists(candidate.sourcePath) && !fileExists(candidate.htmlPath)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`Unable to allocate renamed output paths for: ${outputPath}.`);
+}
+
+function resolveOutputPath(outputPath) {
+  return resolveOutputTargets(outputPath, HTML_EXPORT_MODE).htmlPath;
+}
+
+function prepareOutputPath(outputPath, options = {}) {
+  return prepareOutputTargets(outputPath, HTML_EXPORT_MODE, options).htmlPath;
+}
+
+function ensureDir(filePath) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
 }
 
 function printHelp() {
   const lines = [
     'Usage:',
-    '  node render-wechat-article-html.js --stdin --output <path> [--theme <theme>] [--title <title>] [--overwrite|--rename-if-exists]',
-    '  node render-wechat-article-html.js --input <json-file> --output <path> [--theme <theme>] [--title <title>] [--overwrite|--rename-if-exists]',
-    '  node render-wechat-article-html.js --input-base64 <base64> --output <path> [--theme <theme>] [--title <title>] [--overwrite|--rename-if-exists]',
+    '  node render-wechat-article-html.js --stdin --output <path> [--export-mode <mode>] [--theme <theme>] [--title <title>] [--overwrite|--rename-if-exists]',
+    '  node render-wechat-article-html.js --input <json-file> --output <path> [--export-mode <mode>] [--theme <theme>] [--title <title>] [--overwrite|--rename-if-exists]',
+    '  node render-wechat-article-html.js --input-base64 <base64> --output <path> [--export-mode <mode>] [--theme <theme>] [--title <title>] [--overwrite|--rename-if-exists]',
     '',
     'Input options:',
-    '  --stdin           Read article JSON from stdin.',
-    '  --input           Read article JSON from a UTF-8 file.',
-    '  --input-base64    Read article JSON from a UTF-8 base64 string.',
+    '  --stdin             Read export JSON from stdin.',
+    '  --input             Read export JSON from a UTF-8 file.',
+    '  --input-base64      Read export JSON from a UTF-8 base64 string.',
+    '',
+    'Export modes:',
+    `  ${HTML_EXPORT_MODE}    Write final HTML only. Default.`,
+    `  ${SOURCE_HTML_EXPORT_MODE}  Write source.md and final.html together.`,
     '',
     'Output options:',
-    '  --output          Directory, .html/.htm file, or .md naming hint.',
-    '  --overwrite       Allow overwriting an existing output file.',
+    '  --output            Directory, .html/.htm file, or .md naming hint.',
+    '  --overwrite         Allow overwriting an existing output file.',
     '  --rename-if-exists  Auto-rename when output file already exists.',
   ];
   process.stdout.write(`${lines.join('\n')}\n`);
@@ -657,44 +1013,76 @@ function main() {
     throw new Error('Missing --output.');
   }
 
+  const exportMode = normalizeExportMode(args.exportMode);
   const input = readJson(args);
-  const articleInput = { ...input, theme: args.theme || input.theme, title: args.title || input.title };
-  const themePlan = resolveRenderableTheme(articleInput, articleInput.theme);
-  const html = buildHtml(articleInput);
+  const normalized = normalizeExportInput(input, {
+    theme: args.theme,
+    title: args.title,
+  });
+  const themePlan = resolveRenderableTheme(normalized.articleInput, normalized.articleInput.theme);
+  const html = buildHtml(normalized.articleInput);
   validateHtml(html);
-  const outputPath = prepareOutputPath(args.output, {
+  validateNoSourceLeak(html, normalized.source);
+
+  if (exportMode === SOURCE_HTML_EXPORT_MODE && !normalized.source) {
+    throw new Error('source-html-export requires source fields or a source object in the input payload.');
+  }
+
+  const outputTargets = prepareOutputTargets(args.output, exportMode, {
     overwrite: args.overwrite,
     renameIfExists: args.renameIfExists,
   });
-  ensureDir(outputPath);
-  fs.writeFileSync(outputPath, html, 'utf8');
+
+  ensureDir(outputTargets.htmlPath);
+  fs.writeFileSync(outputTargets.htmlPath, html, 'utf8');
+
+  if (exportMode === SOURCE_HTML_EXPORT_MODE) {
+    const sourceMarkdown = buildSourceMarkdown(normalized.source);
+    ensureDir(outputTargets.sourcePath);
+    fs.writeFileSync(outputTargets.sourcePath, sourceMarkdown, 'utf8');
+  }
+
   process.stdout.write(JSON.stringify({
-    output: outputPath,
+    inputModel: normalized.inputModel,
+    exportMode,
     requestedTheme: themePlan.requestedTheme,
     effectiveTheme: themePlan.effectiveTheme,
     downgradedToNative: themePlan.downgraded,
     downgradeReasons: themePlan.issues,
+    output: outputTargets.htmlPath,
+    sourceOutput: outputTargets.sourcePath || null,
   }, null, 2));
 }
 
 module.exports = {
+  HTML_EXPORT_MODE,
+  SOURCE_HTML_EXPORT_MODE,
   buildHtml,
+  buildSourceMarkdown,
+  collectThemeMappingIssues,
   escapeHtml,
+  extractLeadText,
   mergePreset,
+  normalizeExportInput,
+  normalizeExportMode,
+  normalizeSource,
   normalizeTheme,
-  printHelp,
-  prepareOutputPath,
   parseArgs,
+  prepareOutputPath,
+  prepareOutputTargets,
+  printHelp,
   renderBlock,
   renderClosing,
   renderLead,
   renderSection,
   renderText,
-  resolveRenderableTheme,
   resolveOutputPath,
+  resolveOutputTargets,
+  resolveRenderableTheme,
   validateArticleInput,
   validateHtml,
-  collectThemeMappingIssues,
+  validateNoSourceLeak,
+  validateSource,
 };
 
 if (require.main === module) {
