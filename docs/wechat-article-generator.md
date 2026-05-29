@@ -6,26 +6,29 @@
 
 **标识**：`wechat-article-generator`
 
-**版本**：1.5.1
+**版本**：1.5.7
 
-**功能**：将主题、素材、草稿或 Markdown 先整理为可审阅的公众号发布源稿（标题、摘要、封面提示词、正文 Markdown），确认后再按内置多主题生成微信兼容内联样式 HTML。
+**功能**：将用户提供的主题、素材、草稿、Markdown 或正文先整理为可审阅的公众号发布源稿（标题、摘要、封面提示词、正文 Markdown），确认后按内置主题生成微信兼容的内联样式 HTML。
 
 ---
 
 ## 快速开始
 
+### 基本用法
+
 直接描述你的任务需求即可触发该技能，例如：
 
 ```text
-帮我把这篇技术文章整理成公众号发布稿，先给我看标题和摘要。
+根据以下要点帮我整理一篇公众号文章，先看源稿再输出 HTML：
+[你的素材或要点]
 ```
 
 ```text
-我有一份产品介绍要点，帮我排版成微信公众号文章，用苹果风格。
+把我这份 Markdown 草稿整理成公众号发布源稿，先确认再生成 wechat-native 风格的 HTML。
 ```
 
 ```text
-把我这份 Markdown 转成公众号 HTML，同时保留 source.md 源稿，导出到 output 目录。
+根据下面的聊天记录整理成公众号文章，我要保留 source.md 和 final.html，用 codex 主题。
 ```
 
 ---
@@ -36,14 +39,12 @@
 
 | 能力 | 说明 |
 |------|------|
-| 四段式发布源稿整理 | 从任意输入中提取标题（≤64 字）、摘要（≤120 字）、封面提示词和标准正文 Markdown，四部分互相一致 |
-| 多主题渲染 | 内置 9 套公众号主题：微信原生、学术论文、Apple 风格、Claude Code、Codex、飞书、掘金、Notion、Obsidian |
-| 忠实排版整理 | 默认不擅改原意，将口语化内容整理为层级清晰、段落整齐、节奏稳定的手机端正文 |
-| 对话优先 | 中间结果只在对话中展示，不额外创建文件；仅在用户明确要求时才落盘 |
-| 文件导出 | 支持两种文件导出模式：仅 HTML（`final.html`）或完整发布资产（`source.md` + `final.html`） |
-| 微信兼容 HTML | 使用基础标签和内联样式，杜绝脚本、`div` 依赖和不可控外链，确保公众号复制链路稳定 |
-| 主题自包含 | 每个主题的组件样式在技能目录内独立定义，执行时不依赖外部模板或样式样例 |
-| 风险收口 | 对日期、数据、价格、政策等可变事实优先使用用户来源，无法核验时降低确定性表达 |
+| 四段式发布源稿整理 | 从任意输入（主题、素材、草稿、Markdown、聊天记录）整理出标题、摘要、封面提示词、正文 Markdown |
+| 内容忠实排版 | 默认忠实于原文事实与立场，不擅自改写数字、引用、结论 |
+| 微信兼容 HTML 生成 | 确认源稿后按内置主题生成纯内联样式、无脚本的公众号兼容 HTML |
+| 多主题批量导出 | 支持同一份源稿按多个内置主题生成多份 HTML |
+| 文件资产落盘 | 可按需落盘 `final.html`、`source.md + final.html`，或批量主题导出 |
+| 可选封面图生成 | 用户明确要求时，在主 HTML 交付后追加微信封面图生成 |
 
 ---
 
@@ -51,98 +52,94 @@
 
 ### 适合的输入
 
-- 完整的正文、Markdown 草稿或已排版文章
-- 要点、摘录、聊天记录或碎片素材
-- 已有主题但缺少标题/摘要/封面提示词的半成稿
-- 需要按特定风格统一排版的文章
+- 要点、提纲、草稿、聊天记录等碎片化素材
+- 已写好的 Markdown 正文或连续文本
+- 本地文件路径（文章内容来源）
+- 包含主题、读者、长度等偏好的需求描述
 
 ### 执行特点
 
-- **先审阅后输出**：默认先在对话中展示四段式源稿供确认，再生成 HTML
-- **不追问非关键信息**：主题未指定时默认用微信原生风格，输出路径未指定时不主动询问
-- **主题权威优先**：主题确定后，组件样式严格按技能内部规范执行，不允许混用或自拟
-- **阻塞性缺口最多问 3 个问题**：仅在主题/任务目标完全不清、输出路径冲突或内容要求矛盾时才追问
+- 默认在对话中完成内容整理与确认，不生成过程文件
+- 内容确认后才生成最终 HTML，不会跳过源稿审核
+- 未指定主题时默认使用 `wechat-native-template`（微信原生风格）
+- 用户只需说"落盘"或"导出文件"即可进入文件导出分支，无需指定技术参数
 
 ---
 
-## 输出结果
+## 交付物
 
-### 默认模式（对话审阅）
-
-在对话中按以下顺序交付：
-
-1. **发布源稿**：标题、摘要、封面提示词、正文 Markdown
-2. **确认后的最终 HTML**：微信兼容内联样式 HTML，不包含 `cover_prompt`
-
-### 文件导出模式
-
-- **仅 HTML**（`html-file-export`）：落盘 `final.html`
-- **完整资产**（`source-html-export`）：落盘 `source.md`（含 frontmatter）和 `final.html`
-
-`source.md` 的 frontmatter 固定包含 `title`、`summary`、`cover_prompt`、`theme` 四个字段。
+- **发布源稿**（对话中展示）：包含标题（≤64 字）、摘要（≤120 字）、封面提示词、标准正文 Markdown
+- **最终 HTML**（对话中或文件）：微信兼容的内联样式 HTML，不含封面提示词等元信息
+- **`source.md`**（可选落盘）：含 frontmatter（title/summary/cover_prompt/theme）的 Markdown 源稿
+- **`final.html`**（可选落盘）：由确定性渲染脚本生成的最终 HTML 文件
+- **多主题 HTML**（可选）：同一份源稿的多主题批量导出
+- **`cover.png`**（可选）：用户明确要求时的微信封面图
 
 ---
 
 ## 使用示例
 
-### 示例 1：正向触发——先整理再确认
+### 示例 1：对话整理 + 确认后生成 HTML
 
 **输入**：
 
 ```text
-我写了一篇关于 VS Code Copilot 使用技巧的文章草稿，内容比较散，
-帮我整理成可以发公众号的形式。先给我看标题、摘要和排版后的正文。
+帮我把以下要点整理成公众号文章，我想先看效果再确认：
+- 远程办公的三大优势
+- 实际落地的五个挑战
+- 给团队的三条建议
 ```
 
-**执行**：技能会在对话中给出四段式源稿供确认，用户确认后直接输出对应 HTML。
+**过程**：技能会在对话中先展示四段式发布源稿（标题、摘要、封面提示词、正文 Markdown）供你审阅，确认后生成最终 HTML。
 
 ---
 
-### 示例 2：边界触发——只要最终 HTML
+### 示例 2：只要最终 HTML，不要中间过程
 
 **输入**：
 
 ```text
-把这篇 Markdown 转成公众号 HTML，不要过程，直接给结果。
+把这篇发给我的文章生成公众号 HTML，直接用 feishu 风格。
+[文章内容]
 ```
 
-**执行**：技能会判断这是 `wechat-html-composer` 的适用场景并优先转交。如果用户明确点名当前技能，则内部完成源稿整理后直接输出 HTML，不在对话中展开四段内容。
+**说明**：如果你只需要最终 HTML、不需要中间审阅和源稿保留，系统会优先使用 `wechat-html-composer` 处理。如果你明确点名 `wechat-article-generator`，则会先在内部完成整理再输出 HTML。
 
 ---
 
-### 示例 3：文件落地——导出完整发布资产
+### 示例 3：落盘 source.md + final.html + 封面图
 
 **输入**：
 
 ```text
-用学术论文主题排版这篇论文摘要，导出 source.md 和 final.html 到 output 目录。
+根据以下素材整理公众号文章，输出 source.md 和 final.html 到 docs/ 目录，用 notion 主题，再帮我生成一张微信封面图。
+[素材]
 ```
 
-**执行**：先在对话中确认四段式源稿，确认后落盘 `source.md`（含 frontmatter）和 `final.html`，使用 `academic-paper-template` 主题。
+**过程**：技能会先在对话中确认源稿，再依次生成最终 HTML、写入 source.md + final.html 到 docs/，最后尝试在当前环境生成封面图。
 
 ---
 
 ## 注意事项
 
-1. **默认不创建文件**：所有中间结果停留在对话中，不会向用户工作区写入额外 Markdown、JSON 或说明文档。
-2. **`cover_prompt` 不进 HTML**：封面提示词仅作为源稿元数据保留，不会渲染到最终 HTML 中。
-3. **标题和摘要有硬性长度限制**：标题不超过 64 字，摘要不超过 120 字。
-4. **正文 Markdown 有语法子集限制**：禁止一级标题、四级及以上标题、原始 HTML 标签、内联样式和伪列表；并列信息用标准列表，引述用 `>`，代码用围栏代码块。
-5. **主题不可混用**：每个主题的组件语法独立，不允许跨主题借用组件（如把 codex 的左强调线标题用到飞书主题）。
-6. **未映射组件自动回退**：当前主题无法映射用户请求的组件时，整篇回退到微信原生主题，不允许局部自拟样式。
-7. **可变事实审慎处理**：涉及日期、数据、价格、政策等无法核验的信息时，优先降级表达或移出核心论据。
-8. **文件覆盖需确认**：目标文件已存在时，必须先询问用户是否覆盖。
-9. **与 wechat-html-composer 的边界**：用户只要最终 HTML 不要过程时优先转交 `wechat-html-composer`；用户要求先确认源稿、保留 `source.md` 或明确点名本技能时才使用当前技能。
+1. 标题不超过 64 字，摘要不超过 120 字，这是硬约束。
+2. 默认只做忠实排版整理，不改写事实、数字、引用或结论立场；如需润色请明确说明。
+3. 中间产物（源稿整理）只出现在对话中，不会生成临时文件或隐藏文件。
+4. 文件落地必须通过技能目录内的确定性渲染脚本，手写 HTML 不能替代。
+5. 指定的主题若未命中内置主题（9 个），会自动降级为 `wechat-native-template`。
+6. 封面图生成是附加分支，依赖当前运行环境的图像生成能力；生成失败不会影响 HTML 主交付。
+7. 目标文件已存在时不会自动覆盖，会先询问你的决定。
+8. 正文 Markdown 只会承载读者可见的文章内容，不会混入文件路径、封面提示词、执行说明等元信息。
 
 ---
 
 ## 适用场景
 
-- 用户希望先在对话中整理内容、确认标题摘要和结构，再输出 HTML
-- 用户需要得到一份包含标题、摘要、封面提示词和正文的标准发布源稿
-- 用户需要按特定视觉风格（Apple、飞书、Notion 等）排版公众号文章
-- 用户最终需要 HTML 文件或 `source.md + final.html` 落地
-- 用户希望中间过程在对话中完成，不产生工作区垃圾文件
+- 你想先把碎片素材整理成一篇结构清晰的公众号文章，确认后再生成 HTML
+- 你需要同时输出标题、摘要、封面提示词和正文，用于公众号发布全流程
+- 你想把同一篇文章按多个内置主题风格分别生成 HTML
+- 你需要保留可复用的 `source.md` 源稿，方便后续再编辑
+- 你需要配套的微信封面图作为文章发布资产的一部分
 
 ---
 
@@ -152,7 +149,11 @@
 - 元数据：`.agents/skills/wechat-article-generator/_meta.json`
 - 渲染契约：`.agents/skills/wechat-article-generator/references/render-contract.md`
 - 主题规范：`.agents/skills/wechat-article-generator/references/theme-spec.md`
+- 内容格式标准：`.agents/skills/wechat-article-generator/references/content-format-standard.md`
+- 质量门禁：`.agents/skills/wechat-article-generator/references/quality-gates.md`
+- 维护清单：`.agents/skills/wechat-article-generator/references/maintenance-checklist.md`
 - 场景走查：`.agents/skills/wechat-article-generator/references/usage-walkthroughs.md`
-- 样式预设：`.agents/skills/wechat-article-generator/assets/theme-presets.js`
 - 渲染脚本：`.agents/skills/wechat-article-generator/scripts/render-wechat-article-html.js`
+- 批量渲染脚本：`.agents/skills/wechat-article-generator/scripts/render-wechat-article-theme-batch.js`
 - 验证脚本：`.agents/skills/wechat-article-generator/scripts/verify-render-wechat-article-html.js`
+- 主题预设：`.agents/skills/wechat-article-generator/assets/theme-presets.js`

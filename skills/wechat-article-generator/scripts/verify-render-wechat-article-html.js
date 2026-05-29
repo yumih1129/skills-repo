@@ -4,6 +4,9 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const renderer = require('./render-wechat-article-html.js');
+const themeBatch = require('./render-wechat-article-theme-batch.js');
+const presets = require('../assets/theme-presets.js');
+const tempDirs = [];
 
 function assert(condition, message) {
   if (!condition) {
@@ -12,7 +15,15 @@ function assert(condition, message) {
 }
 
 function makeTempDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'wechat-article-generator-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wechat-article-generator-'));
+  tempDirs.push(tempDir);
+  return tempDir;
+}
+
+function cleanupTempDirs() {
+  tempDirs.forEach((tempDir) => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
 }
 
 function verifyDirectRenderStillWorks() {
@@ -160,6 +171,54 @@ function verifySourceValidation() {
   assert(failed, 'Source markdown must reject top-level # headings.');
 }
 
+function verifyReaderVisibleMetaGuardrails() {
+  let failed = false;
+  try {
+    renderer.normalizeSource({
+      title: '标题',
+      summary: '摘要',
+      cover_prompt: '制作一张克制的公众号封面，不要水印。',
+      theme: 'wechat-native-template',
+      markdown: '## 阅读提示\n\n完整封面提示词与原始链接信息保留在源稿文件中，便于后续二次编辑或复核。',
+    });
+  } catch (error) {
+    failed = /reader-visible source\/export metadata/i.test(String(error.message || error));
+  }
+  assert(failed, 'Source markdown must reject reader-visible source/export metadata.');
+
+  failed = false;
+  try {
+    renderer.buildHtml({
+      title: '标题',
+      lead: '摘要',
+      blocks: [
+        { type: 'callout', label: '阅读提示', text: '完整 cover_prompt 与可复用正文已写入 source.md，便于后续再编辑。' },
+      ],
+      sections: [
+        {
+          level: 2,
+          heading: '正文',
+          blocks: [{ type: 'paragraph', text: '正文内容。' }],
+        },
+      ],
+    });
+  } catch (error) {
+    failed = /reader-visible source\/export metadata/i.test(String(error.message || error));
+  }
+  assert(failed, 'Article callouts must reject reader-visible source/export metadata.');
+
+  failed = false;
+  try {
+    renderer.validateNoSourceLeak(
+      '<!DOCTYPE html><html><head><title>标题</title></head><body><article><p>已写入 source.md，便于后续再编辑。</p></article></body></html>',
+      { coverPrompt: '制作一张克制的公众号封面，不要水印。' }
+    );
+  } catch (error) {
+    failed = /reader-visible source\/export metadata/i.test(String(error.message || error));
+  }
+  assert(failed, 'Final HTML leak validation must reject source/export metadata text.');
+}
+
 function verifySourceArticleMismatchFailure() {
   let failed = false;
   try {
@@ -227,12 +286,12 @@ function verifyThemeGuardrails() {
       {
         level: 2,
         heading: '章节',
-        blocks: [{ type: 'callout', text: '自动切回微信原生' }],
+        blocks: [{ type: 'callout', label: '研究提示', text: '论文注记不应降级为微信原生。' }],
       },
     ],
   }, 'academic-paper-template');
-  assert(calloutPlan.effectiveTheme === 'wechat-native-template', 'academic-paper-template must downgrade to native when callout is unmapped.');
-  assert(calloutPlan.issues.some((item) => String(item).startsWith('callout:')), 'Downgrade reasons must record unmapped callout.');
+  assert(calloutPlan.effectiveTheme === 'academic-paper-template', 'academic-paper-template must support academic callout notes.');
+  assert(calloutPlan.downgraded === false, 'Academic callout notes must not trigger native downgrade.');
 }
 
 function verifyStrictPresetMapping() {
@@ -299,6 +358,7 @@ function verifyAcademicPaperPresetMapping() {
     lead: { title: '摘要', text: '这是严格论文模板下的摘要正文。' },
     keywords: { items: ['关键词一', '关键词二', '关键词三'] },
     blocks: [
+      { type: 'callout', label: '研究提示', text: '这是论文语境下的注记块，不使用营销卡片。' },
       {
         type: 'table',
         label: 'Table 1',
@@ -327,6 +387,8 @@ function verifyAcademicPaperPresetMapping() {
 
   renderer.validateHtml(html);
   assert(html.includes(`<h1 style="${preset.title}">论文标题</h1>`), 'Academic title style must come directly from preset mapping.');
+  assert(html.includes(`<section style="${preset.callout}">`), 'Academic callout wrapper style must come directly from preset mapping.');
+  assert(html.includes(`<p style="${preset.calloutLabel}">研究提示</p>`), 'Academic callout label style must come directly from preset mapping.');
   assert(html.includes(`<p style="${preset.metaPrimary}">作者甲</p>`), 'Academic primary meta must come directly from preset mapping.');
   assert(html.includes(`<p style="${preset.metaSecondary}">某某大学</p>`), 'Academic secondary meta must come directly from preset mapping.');
   assert(html.includes(`<p style="${preset.metaTertiary}">2026 年 5 月 27 日</p>`), 'Academic tertiary meta must come directly from preset mapping.');
@@ -460,7 +522,7 @@ function verifySourceMdNamingHint() {
   assert(targets.htmlPath.endsWith('package.html'), 'MD naming hint must derive matching HTML basename.');
 }
 
-function verifyUnicodeBase64Path() {
+function verifyUnicodeStdinPath() {
   const tempDir = makeTempDir();
   const outputPath = path.join(tempDir, 'article.html');
   const article = {
@@ -481,14 +543,231 @@ function verifyUnicodeBase64Path() {
       ],
     },
   };
-  const base64 = Buffer.from(JSON.stringify(article), 'utf8').toString('base64');
-  const result = spawnSync(process.execPath, [path.join(__dirname, 'render-wechat-article-html.js'), '--input-base64', base64, '--output', outputPath], {
+  const result = spawnSync(process.execPath, [path.join(__dirname, 'render-wechat-article-html.js'), '--stdin', '--output', outputPath], {
     encoding: 'utf8',
+    input: JSON.stringify(article),
   });
 
-  assert(result.status === 0, `base64 render must succeed: ${result.stderr}`);
+  assert(result.status === 0, `stdin render must succeed: ${result.stderr}`);
   const html = fs.readFileSync(outputPath, 'utf8');
   assert(html.includes('τ'), 'Unicode character must be preserved in HTML output.');
+}
+
+function verifyInputFileModeIsDisabled() {
+  const tempDir = makeTempDir();
+  const inputPath = path.join(tempDir, 'source.json');
+
+  const singleResult = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, 'render-wechat-article-html.js'),
+      '--input',
+      inputPath,
+      '--output',
+      tempDir,
+    ],
+    { encoding: 'utf8' }
+  );
+  assert(singleResult.status !== 0, 'Single-theme renderer must reject --input file mode.');
+  assert(/Unknown argument/i.test(singleResult.stderr), 'Single-theme renderer must fail before reading source.json.');
+
+  const batchResult = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, 'render-wechat-article-theme-batch.js'),
+      '--input',
+      inputPath,
+      '--output',
+      tempDir,
+      '--themes',
+      'wechat-native-template',
+    ],
+    { encoding: 'utf8' }
+  );
+  assert(batchResult.status !== 0, 'Batch renderer must reject --input file mode.');
+  assert(/Unknown argument/i.test(batchResult.stderr), 'Batch renderer must fail before reading source.json.');
+
+  const base64Result = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, 'render-wechat-article-html.js'),
+      '--input-base64',
+      'e30=',
+      '--output',
+      tempDir,
+    ],
+    { encoding: 'utf8' }
+  );
+  assert(base64Result.status !== 0, 'Single-theme renderer must reject --input-base64 mode.');
+  assert(/Unknown argument/i.test(base64Result.stderr), 'Single-theme renderer must fail before decoding base64 input.');
+
+  const batchBase64Result = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, 'render-wechat-article-theme-batch.js'),
+      '--input-base64',
+      'e30=',
+      '--output',
+      tempDir,
+      '--themes',
+      'wechat-native-template',
+    ],
+    { encoding: 'utf8' }
+  );
+  assert(batchBase64Result.status !== 0, 'Batch renderer must reject --input-base64 mode.');
+  assert(/Unknown argument/i.test(batchBase64Result.stderr), 'Batch renderer must fail before decoding base64 input.');
+}
+
+function verifyThemeBatchExport() {
+  const tempDir = makeTempDir();
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, 'render-wechat-article-theme-batch.js'),
+      '--stdin',
+      '--output',
+      tempDir,
+      '--export-mode',
+      renderer.SOURCE_HTML_EXPORT_MODE,
+      '--themes',
+      'wechat-native-template,codex-template,feishu-template,academic-paper-template',
+    ],
+    {
+      encoding: 'utf8',
+      input: JSON.stringify({
+        source: {
+          title: '批量主题导出验证',
+          summary: '同一份源稿导出多个内置主题，验证批量主题导出的同源性。',
+          cover_prompt: '制作一张用于批量主题导出验证的公众号封面，信息清晰，不要水印。',
+          theme: 'wechat-native-template',
+          markdown: '引入段落。\n\n## 主章节\n\n正文内容。',
+        },
+        article: {
+          meta: ['作者甲', '测试团队', '2026 年 5 月 28 日'],
+          keywords: { items: ['批量导出', '主题映射', '同源验证'] },
+          sections: [
+            {
+              level: 2,
+              heading: '主章节',
+              blocks: [{ type: 'paragraph', text: '正文内容。' }],
+            },
+          ],
+        },
+      }),
+    }
+  );
+
+  assert(result.status === 0, `theme batch export must succeed: ${result.stderr}`);
+  const files = fs.readdirSync(tempDir).sort();
+  assert(files.includes('source.md'), 'Batch source-html export must write one source.md.');
+  assert(files.includes('wechat-native.html'), 'Batch export must write wechat-native.html.');
+  assert(files.includes('codex.html'), 'Batch export must write codex.html.');
+  assert(files.includes('feishu.html'), 'Batch export must write feishu.html.');
+  assert(files.includes('academic-paper.html'), 'Batch export must write academic-paper.html.');
+  assert(files.filter((file) => file.endsWith('.md')).length === 1, 'Batch export must write exactly one markdown source file.');
+
+  ['wechat-native.html', 'codex.html', 'feishu.html', 'academic-paper.html'].forEach((file) => {
+    const html = fs.readFileSync(path.join(tempDir, file), 'utf8');
+    renderer.validateHtml(html);
+    assert(!html.includes('cover_prompt'), `${file} must not leak cover_prompt field name.`);
+    assert(!html.includes('信息清晰，不要水印'), `${file} must not leak cover prompt text.`);
+  });
+
+  const payload = JSON.parse(result.stdout);
+  assert(payload.outputs.length === 4, 'Batch payload must report every theme output.');
+  assert(payload.sourceOutput && payload.sourceOutput.endsWith('source.md'), 'Batch payload must report source.md output.');
+}
+
+function verifyAllThemeAliasBatchExportIncludesAcademicPaper() {
+  const allThemeNames = Object.keys(presets.themes);
+  const normalizedThemes = themeBatch.normalizeThemeList('各种主题');
+  assert(normalizedThemes.length === allThemeNames.length, '各种主题 must expand to every built-in theme.');
+  assert(normalizedThemes.some((item) => item.theme === 'academic-paper-template'), '各种主题 must include academic-paper-template.');
+  assert(themeBatch.isAllThemeRequest('全部主题'), '全部主题 must be recognized as an all-theme alias.');
+  assert(themeBatch.isAllThemeRequest('所有内置风格'), '所有内置风格 must be recognized as an all-theme alias.');
+
+  const tempDir = makeTempDir();
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, 'render-wechat-article-theme-batch.js'),
+      '--stdin',
+      '--output',
+      tempDir,
+      '--themes',
+      '各种主题',
+    ],
+    {
+      encoding: 'utf8',
+      input: JSON.stringify({
+        source: {
+          title: '各种主题导出验证',
+          summary: '验证自然语言集合主题会展开为全部内置主题并包含论文主题。',
+          cover_prompt: '制作一张用于各种主题导出验证的公众号封面，信息清晰，不要水印。',
+          theme: 'wechat-native-template',
+          markdown: '引入段落。\n\n## 主章节\n\n正文内容。',
+        },
+        article: {
+          sections: [
+            {
+              level: 2,
+              heading: '主章节',
+              blocks: [{ type: 'paragraph', text: '正文内容。' }],
+            },
+          ],
+        },
+      }),
+    }
+  );
+
+  assert(result.status === 0, `all-theme alias batch export must succeed: ${result.stderr}`);
+  const files = fs.readdirSync(tempDir).sort();
+  const htmlFiles = files.filter((file) => file.endsWith('.html'));
+  assert(htmlFiles.length === allThemeNames.length, 'All-theme alias batch export must write one HTML file per built-in theme.');
+  assert(files.includes('academic-paper.html'), 'All-theme alias batch export must write academic-paper.html.');
+
+  const payload = JSON.parse(result.stdout);
+  assert(payload.outputs.length === allThemeNames.length, 'All-theme alias batch payload must report every built-in theme output.');
+  assert(payload.outputs.some((item) => item.theme === 'academic-paper-template' && item.output.endsWith('academic-paper.html')), 'All-theme alias batch payload must report academic-paper output.');
+}
+
+function verifyThemeBatchWriteFailureDoesNotLeavePartialOutputs() {
+  const tempDir = makeTempDir();
+  const batch = themeBatch.buildBatch(
+    {
+      source: {
+        title: '批量写入失败验证',
+        summary: '验证批量导出提交失败时不会留下部分主题文件。',
+        cover_prompt: '制作一张用于写入失败验证的公众号封面，不要水印。',
+        theme: 'wechat-native-template',
+        markdown: '引入段落。\n\n## 主章节\n\n正文内容。',
+      },
+      article: {
+        sections: [
+          {
+            level: 2,
+            heading: '主章节',
+            blocks: [{ type: 'paragraph', text: '正文内容。' }],
+          },
+        ],
+      },
+    },
+    themeBatch.normalizeThemeList('wechat-native-template,codex-template')
+  );
+  const blockerPath = path.join(tempDir, 'codex.html');
+  fs.mkdirSync(blockerPath);
+
+  let failed = false;
+  try {
+    themeBatch.writeBatch(batch, tempDir, renderer.HTML_EXPORT_MODE, { overwrite: true });
+  } catch (error) {
+    failed = true;
+    assert(/EISDIR|directory|dir/i.test(String(error.message || error)), 'Batch write failure must expose the underlying file-system reason.');
+  }
+
+  assert(failed, 'Batch write must fail when a target file path is blocked by a directory.');
+  assert(!fs.existsSync(path.join(tempDir, 'wechat-native.html')), 'Failed batch write must not leave earlier theme HTML output.');
+  assert(fs.statSync(blockerPath).isDirectory(), 'Failed batch write must preserve the pre-existing blocking path.');
 }
 
 function main() {
@@ -498,6 +777,7 @@ function main() {
   verifyStructureFailure();
   verifySourcePackageNormalization();
   verifySourceValidation();
+  verifyReaderVisibleMetaGuardrails();
   verifySourceArticleMismatchFailure();
   verifyThemeGuardrails();
   verifyStrictPresetMapping();
@@ -506,13 +786,24 @@ function main() {
   verifyExportRequiresSource();
   verifySourceHtmlExport();
   verifySourceMdNamingHint();
-  verifyUnicodeBase64Path();
+  verifyUnicodeStdinPath();
+  verifyInputFileModeIsDisabled();
+  verifyThemeBatchExport();
+  verifyAllThemeAliasBatchExportIncludesAcademicPaper();
+  verifyThemeBatchWriteFailureDoesNotLeavePartialOutputs();
   process.stdout.write('Verification passed.\n');
 }
 
+let exitCode = 0;
 try {
   main();
 } catch (error) {
   console.error(error.message || String(error));
-  process.exit(1);
+  exitCode = 1;
+} finally {
+  cleanupTempDirs();
+}
+
+if (exitCode !== 0) {
+  process.exit(exitCode);
 }

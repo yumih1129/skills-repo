@@ -12,9 +12,7 @@ function parseArgs(argv) {
   const out = { unknown: [] };
   for (let i = 2; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (arg === '--input') out.input = argv[++i];
-    else if (arg === '--input-base64') out.inputBase64 = argv[++i];
-    else if (arg === '--output') out.output = argv[++i];
+    if (arg === '--output') out.output = argv[++i];
     else if (arg === '--theme') out.theme = argv[++i];
     else if (arg === '--title') out.title = argv[++i];
     else if (arg === '--export-mode') out.exportMode = argv[++i];
@@ -28,14 +26,10 @@ function parseArgs(argv) {
 }
 
 function readJson(options) {
-  let raw = '';
-  if (options.inputBase64) {
-    raw = Buffer.from(options.inputBase64, 'base64').toString('utf8');
-  } else if (options.stdin) {
-    raw = fs.readFileSync(0, 'utf8');
-  } else {
-    raw = fs.readFileSync(options.input, 'utf8');
+  if (options.stdin && fs.fstatSync(0).isFile()) {
+    throw new Error('stdin must be supplied by an in-memory producer, not a local file redirection.');
   }
+  const raw = options.stdin ? fs.readFileSync(0, 'utf8') : '';
   return JSON.parse(raw);
 }
 
@@ -65,6 +59,20 @@ function isNonEmptyText(value) {
 function normalizeMarkdownBody(value) {
   return String(value ?? '').replace(/^\uFEFF/, '').trim();
 }
+
+const READER_VISIBLE_META_PATTERNS = [
+  { label: 'source.md', pattern: /\bsource\.md\b/i },
+  { label: 'final.html', pattern: /\bfinal\.html\b/i },
+  { label: 'cover_prompt', pattern: /\bcover_prompt\b/i },
+  { label: '源稿文件', pattern: /源稿文件/ },
+  { label: '封面提示词保存说明', pattern: /完整?封面提示词|封面提示词.{0,12}(保留|保存|写入|放在|位于)/ },
+  { label: '原始链接保留说明', pattern: /原始链接.{0,12}(保留|保存|写入|放在|位于)/ },
+  { label: '二次编辑说明', pattern: /二次编辑|后续再编辑|后续二次编辑/ },
+  { label: '复核路径说明', pattern: /复核路径|便于.{0,12}复核|用于.{0,12}复核/ },
+  { label: '写入文件说明', pattern: /已写入.{0,24}(source\.md|final\.html|源稿|文件|正文)/i },
+  { label: '可复用正文写入说明', pattern: /可复用正文.{0,16}(写入|保留|保存)/ },
+  { label: '执行过程说明', pattern: /执行过程|导出文件|资产管理说明/ },
+];
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -412,6 +420,77 @@ function validateBlock(block, location) {
   }
 }
 
+function validateNoReaderVisibleMetaText(text, location) {
+  if (text == null) return;
+  const value = String(text);
+  if (!value) return;
+  const hit = READER_VISIBLE_META_PATTERNS.find(({ pattern }) => pattern.test(value));
+  if (hit) {
+    throw new Error(`${location} contains reader-visible source/export metadata: ${hit.label}.`);
+  }
+}
+
+function validateNoReaderVisibleMetaInBlock(block, location) {
+  if (!block || typeof block !== 'object' || Array.isArray(block)) return;
+  const type = block.type || 'paragraph';
+  if (type === 'paragraph' || type === 'quote' || type === 'callout' || type === 'code') {
+    validateNoReaderVisibleMetaText(block.text, `${location}.text`);
+  }
+  if (type === 'callout') {
+    validateNoReaderVisibleMetaText(block.label, `${location}.label`);
+  }
+  if (type === 'list' && Array.isArray(block.items)) {
+    block.items.forEach((item, index) => validateNoReaderVisibleMetaText(item, `${location}.items[${index}]`));
+  }
+  if (type === 'table') {
+    validateNoReaderVisibleMetaText(block.label, `${location}.label`);
+    validateNoReaderVisibleMetaText(block.note, `${location}.note`);
+    (block.headers || []).forEach((cell, index) => validateNoReaderVisibleMetaText(cell, `${location}.headers[${index}]`));
+    (block.rows || []).forEach((row, rowIndex) => {
+      (row || []).forEach((cell, cellIndex) => validateNoReaderVisibleMetaText(cell, `${location}.rows[${rowIndex}][${cellIndex}]`));
+    });
+  }
+  if (type === 'image') {
+    validateNoReaderVisibleMetaText(block.alt, `${location}.alt`);
+    validateNoReaderVisibleMetaText(block.caption, `${location}.caption`);
+  }
+}
+
+function validateNoReaderVisibleMetaInArticle(input) {
+  validateNoReaderVisibleMetaText(input.eyebrow, 'eyebrow');
+  const meta = Array.isArray(input.meta) ? input.meta : input.meta != null ? [input.meta] : [];
+  meta.forEach((item, index) => {
+    const text = typeof item === 'string' ? item : item?.text;
+    validateNoReaderVisibleMetaText(text, `meta[${index}]`);
+  });
+  if (typeof input.lead === 'string') {
+    validateNoReaderVisibleMetaText(input.lead, 'lead');
+  } else if (isPlainObject(input.lead)) {
+    validateNoReaderVisibleMetaText(input.lead.title, 'lead.title');
+    validateNoReaderVisibleMetaText(input.lead.text, 'lead.text');
+  }
+  if (input.keywords != null) {
+    const keywords = input.keywords;
+    if (typeof keywords === 'string') {
+      validateNoReaderVisibleMetaText(keywords, 'keywords');
+    } else if (Array.isArray(keywords)) {
+      keywords.forEach((item, index) => validateNoReaderVisibleMetaText(item, `keywords[${index}]`));
+    } else if (isPlainObject(keywords)) {
+      validateNoReaderVisibleMetaText(keywords.label, 'keywords.label');
+      validateNoReaderVisibleMetaText(keywords.text, 'keywords.text');
+      (keywords.items || []).forEach((item, index) => validateNoReaderVisibleMetaText(item, `keywords.items[${index}]`));
+    }
+  }
+  collectBlocks(input).forEach(({ block, location }) => validateNoReaderVisibleMetaInBlock(block, location));
+  (input.sections || []).forEach((section, index) => validateNoReaderVisibleMetaText(section.heading, `sections[${index}].heading`));
+  const closing = Array.isArray(input.closing) ? input.closing : input.closing != null ? [input.closing] : [];
+  closing.forEach((item, index) => {
+    if (typeof item === 'string') {
+      validateNoReaderVisibleMetaText(item, `closing[${index}]`);
+    }
+  });
+}
+
 function validateLead(lead) {
   if (lead == null) return;
   if (typeof lead === 'string') {
@@ -491,6 +570,7 @@ function validateArticleInput(input) {
       }
     });
   }
+  validateNoReaderVisibleMetaInArticle(input);
 }
 
 function validateSource(source) {
@@ -521,6 +601,7 @@ function validateSource(source) {
   if (/^---\s*$/m.test(source.markdown.split('\n')[0] || '')) {
     throw new Error('source.markdown must not start with frontmatter; frontmatter is generated separately.');
   }
+  validateNoReaderVisibleMetaText(source.markdown, 'source.markdown');
 }
 
 function collectBlocks(input) {
@@ -780,6 +861,7 @@ function validateNoSourceLeak(html, source) {
   if (html.includes(source.coverPrompt)) {
     throw new Error('Generated HTML leaked cover_prompt content.');
   }
+  validateNoReaderVisibleMetaText(html, 'Generated HTML');
 }
 
 function inspectOutputPath(outputPath) {
@@ -967,13 +1049,9 @@ function printHelp() {
   const lines = [
     'Usage:',
     '  node render-wechat-article-html.js --stdin --output <path> [--export-mode <mode>] [--theme <theme>] [--title <title>] [--overwrite|--rename-if-exists]',
-    '  node render-wechat-article-html.js --input <json-file> --output <path> [--export-mode <mode>] [--theme <theme>] [--title <title>] [--overwrite|--rename-if-exists]',
-    '  node render-wechat-article-html.js --input-base64 <base64> --output <path> [--export-mode <mode>] [--theme <theme>] [--title <title>] [--overwrite|--rename-if-exists]',
     '',
     'Input options:',
-    '  --stdin             Read export JSON from stdin.',
-    '  --input             Read export JSON from a UTF-8 file.',
-    '  --input-base64      Read export JSON from a UTF-8 base64 string.',
+    '  --stdin             Read export JSON from stdin supplied by an in-memory producer.',
     '',
     'Export modes:',
     `  ${HTML_EXPORT_MODE}    Write final HTML only. Default.`,
@@ -997,12 +1075,8 @@ function main() {
     throw new Error(`Unknown argument(s): ${args.unknown.join(', ')}.`);
   }
 
-  const inputModeCount = [args.input, args.stdin, args.inputBase64].filter(Boolean).length;
-  if (inputModeCount === 0) {
-    throw new Error('Missing --input, --stdin, or --input-base64.');
-  }
-  if (inputModeCount > 1) {
-    throw new Error('Use exactly one of --input, --stdin, or --input-base64.');
+  if (!args.stdin) {
+    throw new Error('Missing --stdin.');
   }
   if (!args.output) {
     throw new Error('Missing --output.');
@@ -1077,6 +1151,7 @@ module.exports = {
   validateArticleInput,
   validateHtml,
   validateNoSourceLeak,
+  validateNoReaderVisibleMetaText,
   validateSource,
 };
 

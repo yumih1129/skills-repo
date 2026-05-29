@@ -10,7 +10,7 @@ module.exports = {
       eyebrow: false,
       meta: true,
       keywords: true,
-      callout: false,
+      callout: true,
     },
     "apple-style-template": {
       eyebrow: true,
@@ -121,6 +121,9 @@ module.exports = {
       leadText: "margin:0 0 8px;font-size:15px;line-height:2;text-align:justify;color:#222222;text-indent:0;",
       keywordLine: "margin:0 0 28px;font-size:14px;line-height:2;color:#222222;text-align:justify;",
       keywordLabel: "font-weight:700;",
+      callout: "margin:18px 0 20px;padding:10px 14px 10px 14px;background:#ffffff;border-top:1px solid #8a8a8a;border-bottom:1px solid #d0d0d0;border-left:none;border-right:none;border-radius:0;",
+      calloutLabel: "margin:0 0 4px;font-size:14px;line-height:1.9;font-weight:700;letter-spacing:0;color:#111111;text-transform:none;",
+      calloutText: "margin:0;font-size:15px;line-height:2;color:#222222;text-align:justify;text-indent:0;",
       paragraph: "margin:0 0 16px;font-size:15px;line-height:2;text-align:justify;color:#222222;text-indent:2em;",
       list: "margin:8px 0 18px;padding-left:26px;color:#222222;",
       listItem: "margin:6px 0;font-size:15px;line-height:2;",
