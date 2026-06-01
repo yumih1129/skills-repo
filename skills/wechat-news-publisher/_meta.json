@@ -1,0 +1,22 @@
+{
+  "name": "WeChat News Publisher",
+  "ownerId": "Yumih",
+  "slug": "wechat-news-publisher",
+  "icon": "Newspaper",
+  "iconType": "library",
+  "iconLibrary": "lucide",
+  "description": "基于指定主题与时间，完成新闻检索、公众号源件、固定版式 HTML、封面图与指定目录落地。",
+  "homepage": "https://github.com/yumih1129/skills-repo/tree/main/skills/wechat-news-publisher",
+  "tags": [
+    "微信公众号",
+    "新闻",
+    "HTML"
+  ],
+  "category": "内容创作",
+  "version": "1.2.0",
+  "publishedAt": 1780244797000,
+  "updatedAt": 1780246966000,
+  "license": "Apache-2.0",
+  "language": "zh-CN",
+  "status": "active"
+}

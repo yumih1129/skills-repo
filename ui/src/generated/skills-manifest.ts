@@ -216,7 +216,7 @@ const _manifestData = {
       "category": "内容创作",
       "version": "1.5.7",
       "publishedAt": 1779806315767,
-      "updatedAt": 1779973754952,
+      "updatedAt": 1780075200000,
       "license": "Apache-2.0",
       "language": "zh-CN",
       "status": "active",
@@ -225,6 +225,33 @@ const _manifestData = {
       "hasEvaluation": true,
       "docsPath": "/docs/wechat-article-generator.md",
       "evaluationPath": "/evaluations/wechat-article-generator.md"
+    },
+    {
+      "name": "WeChat News Publisher",
+      "ownerId": "Yumih",
+      "slug": "wechat-news-publisher",
+      "icon": "Newspaper",
+      "iconType": "library",
+      "iconLibrary": "lucide",
+      "description": "基于指定主题与时间，完成新闻检索、公众号源件、固定版式 HTML、封面图与指定目录落地。",
+      "homepage": "https://github.com/yumih1129/skills-repo/tree/main/skills/wechat-news-publisher",
+      "tags": [
+        "微信公众号",
+        "新闻",
+        "HTML"
+      ],
+      "category": "内容创作",
+      "version": "1.2.0",
+      "publishedAt": 1780244797000,
+      "updatedAt": 1780246966000,
+      "license": "Apache-2.0",
+      "language": "zh-CN",
+      "status": "active",
+      "id": "wechat-news-publisher",
+      "hasDocs": true,
+      "hasEvaluation": true,
+      "docsPath": "/docs/wechat-news-publisher.md",
+      "evaluationPath": "/evaluations/wechat-news-publisher.md"
     }
   ],
   "categories": [
@@ -234,7 +261,7 @@ const _manifestData = {
     "质量保障",
     "内容创作"
   ],
-  "generatedAt": "2026-05-30T01:14:17.556+08:00"
+  "generatedAt": "2026-06-01T23:44:13.842+08:00"
 } as any
 
 export const manifestData: SkillsManifest = _manifestData
