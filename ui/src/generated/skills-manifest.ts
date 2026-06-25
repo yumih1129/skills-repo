@@ -40,6 +40,33 @@ export interface SkillsManifest {
 const _manifestData = {
   "skills": [
     {
+      "name": "Loop Engineering 工程协作",
+      "ownerId": "Yumih",
+      "slug": "loop-engineering",
+      "icon": "RefreshCcwDot",
+      "iconType": "library",
+      "iconLibrary": "lucide",
+      "description": "用户指定使用 Loop Engineering 时，按闭环八步推进工程任务，强制输出四段式交付报告。",
+      "homepage": "https://github.com/yumih1129/skills/tree/main/.agents/skills/loop-engineering",
+      "tags": [
+        "闭环",
+        "工程协作",
+        "Loop Engineering"
+      ],
+      "category": "开发工具",
+      "version": "1.0.0",
+      "publishedAt": 1782386699000,
+      "updatedAt": 1782386699000,
+      "license": "Apache-2.0",
+      "language": "zh-CN",
+      "status": "active",
+      "id": "loop-engineering",
+      "hasDocs": true,
+      "hasEvaluation": true,
+      "docsPath": "/docs/loop-engineering.md",
+      "evaluationPath": "/evaluations/loop-engineering.md"
+    },
+    {
       "name": "News Briefing Search",
       "ownerId": "Yumih",
       "slug": "news-briefing-search",
@@ -256,12 +283,12 @@ const _manifestData = {
   ],
   "categories": [
     "全部",
-    "信息检索",
     "开发工具",
+    "信息检索",
     "质量保障",
     "内容创作"
   ],
-  "generatedAt": "2026-06-01T23:44:13.842+08:00"
+  "generatedAt": "2026-06-25T20:21:49.923+08:00"
 } as any
 
 export const manifestData: SkillsManifest = _manifestData

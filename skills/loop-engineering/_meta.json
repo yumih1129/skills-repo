@@ -1,0 +1,22 @@
+{
+  "name": "Loop Engineering 工程协作",
+  "ownerId": "Yumih",
+  "slug": "loop-engineering",
+  "icon": "RefreshCcwDot",
+  "iconType": "library",
+  "iconLibrary": "lucide",
+  "description": "用户指定使用 Loop Engineering 时，按闭环八步推进工程任务，强制输出四段式交付报告。",
+  "homepage": "https://github.com/yumih1129/skills/tree/main/.agents/skills/loop-engineering",
+  "tags": [
+    "闭环",
+    "工程协作",
+    "Loop Engineering"
+  ],
+  "category": "开发工具",
+  "version": "1.0.0",
+  "publishedAt": 1782386699000,
+  "updatedAt": 1782386699000,
+  "license": "Apache-2.0",
+  "language": "zh-CN",
+  "status": "active"
+}
